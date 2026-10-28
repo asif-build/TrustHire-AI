@@ -1,45 +1,111 @@
 import os
 import json
 import logging
-import google.generativeai as genai
+import requests
 
 logger = logging.getLogger(__name__)
 
 class AIAdapter:
     """
-    Adapter for Google Gemini API with fallback to deterministic NLP algorithms.
-    Complies with Phase 12: Never hardcodes keys, checks configuration at runtime,
-    enforces request timeouts and structured response validation.
+    Unified AI Adapter supporting ultra-low-latency Groq LLM inference,
+    Google Gemini, and zero-hallucination deterministic NLP fallback.
     """
 
     @classmethod
     def get_api_key(cls):
-        return os.getenv('GEMINI_API_KEY')
+        return (
+            os.getenv('GROQ_API_KEY') or 
+            os.getenv('AI_API_KEY') or 
+            os.getenv('GEMINI_API_KEY')
+        )
+
+    @classmethod
+    def get_provider(cls):
+        key = cls.get_api_key()
+        if not key or key in ['your-gemini-api-key', 'your-groq-api-key']:
+            return 'deterministic'
+        if key.startswith('gsk_') or os.getenv('GROQ_API_KEY'):
+            return 'groq'
+        return 'gemini'
 
     @classmethod
     def is_configured(cls):
-        key = cls.get_api_key()
-        return bool(key and key != 'your-gemini-api-key')
+        return cls.get_provider() != 'deterministic'
 
     @classmethod
     def get_status(cls):
-        configured = cls.is_configured()
-        return {
-            'provider': 'Google Gemini' if configured else 'Deterministic NLP & Semantic Engine',
-            'configured': configured,
-            'model': 'gemini-1.5-flash' if configured else 'TrustHire Grounded Rule-Engine v1.2',
-            'notice': None if configured else 'GEMINI_API_KEY is not set in backend/.env. Running high-precision deterministic algorithms with zero hallucination guarantee.'
-        }
+        provider = cls.get_provider()
+        if provider == 'groq':
+            model = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
+            return {
+                'provider': 'Groq AI (Llama / GPT-OSS)',
+                'configured': True,
+                'model': model,
+                'notice': 'High-performance ultra-low-latency Groq AI connected.'
+            }
+        elif provider == 'gemini':
+            return {
+                'provider': 'Google Gemini',
+                'configured': True,
+                'model': 'gemini-1.5-flash',
+                'notice': 'Google Gemini API connected.'
+            }
+        else:
+            return {
+                'provider': 'Deterministic NLP & Semantic Engine',
+                'configured': False,
+                'model': 'TrustHire Grounded Rule-Engine v1.2',
+                'notice': 'Running high-precision deterministic algorithms with zero hallucination guarantee.'
+            }
 
     @classmethod
     def generate_json(cls, prompt, system_instruction=None, fallback_fn=None):
         """
         Executes an AI prompt expecting structured JSON.
-        If Gemini is configured, calls the API with json response schema.
-        If unavailable or fails, executes the verified deterministic fallback function.
+        Calls Groq or Gemini API with structured JSON schema.
+        If unavailable or fails, executes verified deterministic fallback function.
         """
-        if cls.is_configured():
+        provider = cls.get_provider()
+
+        if provider == 'groq':
+            key = cls.get_api_key()
+            model = os.getenv('GROQ_MODEL', 'openai/gpt-oss-120b')
+            headers = {
+                'Authorization': f'Bearer {key}',
+                'Content-Type': 'application/json'
+            }
+            system_prompt = system_instruction or "You are an expert career intelligence engine. Return valid JSON only with no markdown wrapping."
+            payload = {
+                'model': model,
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': f"{prompt}\n\nIMPORTANT: Return valid JSON only. Do not enclose in backticks or markdown codeblocks."}
+                ],
+                'response_format': {'type': 'json_object'},
+                'temperature': 0.2
+            }
             try:
+                res = requests.post('https://api.groq.com/openai/v1/chat/completions', headers=headers, json=payload, timeout=15)
+                if res.status_code == 200:
+                    data = res.json()
+                    content = data['choices'][0]['message']['content'].strip()
+                    if content.startswith('```'):
+                        content = content.strip('`').replace('json\n', '', 1).strip()
+                    parsed = json.loads(content)
+                    return {
+                        'success': True,
+                        'data': parsed,
+                        'provider': f'groq/{model}',
+                        'error': None
+                    }
+                else:
+                    logger.warning(f"Groq API returned HTTP {res.status_code}: {res.text}")
+            except Exception as e:
+                logger.warning(f"Groq API call failed: {e}")
+
+        elif provider == 'gemini':
+            try:
+                import google.generativeai as genai
                 genai.configure(api_key=cls.get_api_key())
                 model = genai.GenerativeModel(
                     model_name="gemini-1.5-flash",
@@ -56,28 +122,20 @@ class AIAdapter:
                         'error': None
                     }
             except Exception as e:
-                logger.warning(f"Gemini API call failed, invoking deterministic engine: {e}")
-                if fallback_fn:
-                    fallback_data = fallback_fn()
-                    return {
-                        'success': True,
-                        'data': fallback_data,
-                        'provider': 'deterministic_fallback',
-                        'error': f"Gemini warning ({str(e)}), used deterministic engine."
-                    }
-                return {'success': False, 'data': None, 'error': str(e)}
+                logger.warning(f"Gemini API call failed: {e}")
 
-        # Fallback path when no external API key is configured
+        # Fallback to deterministic engine
         if fallback_fn:
             return {
                 'success': True,
                 'data': fallback_fn(),
-                'provider': 'deterministic_engine',
+                'provider': 'deterministic_fallback',
                 'error': None
             }
+
         return {
             'success': False,
             'data': None,
             'provider': 'none',
-            'error': 'Gemini API is not configured and no fallback handler was supplied.'
+            'error': 'AI API call failed and no fallback handler was supplied.'
         }

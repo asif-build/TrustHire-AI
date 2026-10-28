@@ -270,10 +270,10 @@ def parse_structured_resume_data(raw_text):
     # Candidate Name: first 1-3 lines excluding contact info, headers, or URLs
     candidate_name = ''
     candidate_headline = ''
-    for i, line in enumerate(lines[:5]):
-        if '@' not in line and not re.search(r'\d{5,}|http|www|\.com', line, re.I):
+    for i, line in enumerate(lines[:6]):
+        if '@' not in line and not re.search(r'\d{2,}|http|www|\.com|phone|tel:|mobile|github|linkedin', line, re.I):
             clean_line = re.sub(r'[^a-zA-Z\s\.]', '', line).strip()
-            if 3 <= len(clean_line) <= 40 and not any(kw in clean_line.lower() for kw in ['resume', 'curriculum', 'vitae', 'cv']):
+            if 3 <= len(clean_line) <= 40 and not any(kw in clean_line.lower() for kw in ['resume', 'curriculum', 'vitae', 'cv', 'summary', 'skills']):
                 if not candidate_name:
                     candidate_name = clean_line
                 elif not candidate_headline and len(line) < 60:
@@ -443,9 +443,26 @@ def parse_structured_resume_data(raw_text):
     if not education:
         uncertainties.append({'field': 'education', 'reason': 'No formal degree or educational institution identified.'})
 
+    # 8. Optional AI Synthesis if configured
+    summary = ''
+    try:
+        from .ai_adapter import AIAdapter
+        if AIAdapter.is_configured() and detected_skills_flat:
+            prompt = f"Candidate resume text excerpt:\n{raw_text[:2000]}\n\nDetected skills: {detected_skills_flat[:15]}\nReturn JSON with 'summary': (2-3 concise professional sentences summarizing their engineering background) and 'recommended_headline': (e.g. Senior Full Stack Engineer)."
+            ai_data = AIAdapter.generate_json(prompt)
+            if ai_data.get('success') and isinstance(ai_data.get('data'), dict):
+                ai_dict = ai_data['data']
+                if ai_dict.get('summary'):
+                    summary = ai_dict['summary']
+                if ai_dict.get('recommended_headline'):
+                    candidate_headline = ai_dict['recommended_headline']
+    except Exception:
+        pass
+
     return {
         'candidate_name': candidate_name,
         'headline': candidate_headline or ('Software Engineer' if 'software' in lower_text or 'developer' in lower_text else ''),
+        'summary': summary,
         'email': email,
         'phone': phone,
         'location': location,

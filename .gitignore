@@ -16,6 +16,11 @@ frontend/.local
 # Logs
 *.log
 
+# Environment Secrets
+backend/.env
+frontend/.env.local
+*.env.local
+
 # Scratch / Local
 scratch/
 backend/scratch/
