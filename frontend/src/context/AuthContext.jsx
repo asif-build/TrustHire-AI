@@ -17,40 +17,12 @@ export const AuthProvider = ({ children }) => {
     
     // Auto-detect if Supabase is properly configured
     const isSupabaseConfigured = 
-        import.meta.env.VITE_SUPABASE_URL && 
-        import.meta.env.VITE_SUPABASE_URL !== 'https://your-project.supabase.co' && 
-        import.meta.env.VITE_SUPABASE_ANON_KEY && 
-        import.meta.env.VITE_SUPABASE_ANON_KEY !== 'your-anon-key';
-
-    useEffect(() => {
-        if (isSupabaseConfigured) {
-            // Get active Supabase session
-            supabase.auth.getSession().then(({ data: { session } }) => {
-                handleSession(session);
-            });
-
-            // Listen for auth changes
-            const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-                handleSession(session);
-            });
-
-            return () => subscription.unsubscribe();
-        } else {
-            // Load Local Mock Session
-            console.log("Supabase config placeholder detected. Running in Local Developer Mock Mode.");
-            const localSessionJson = localStorage.getItem('mock_session');
-            if (localSessionJson) {
-                try {
-                    const session = JSON.parse(localSessionJson);
-                    handleSession(session);
-                } catch (e) {
-                    setLoading(false);
-                }
-            } else {
-                setLoading(false);
-            }
-        }
-    }, []);
+        Boolean(
+            import.meta.env.VITE_SUPABASE_URL && 
+            import.meta.env.VITE_SUPABASE_URL !== 'https://your-project.supabase.co' && 
+            import.meta.env.VITE_SUPABASE_ANON_KEY && 
+            import.meta.env.VITE_SUPABASE_ANON_KEY !== 'your-anon-key'
+        );
 
     const handleSession = async (session) => {
         if (!session) {
@@ -80,18 +52,79 @@ export const AuthProvider = ({ children }) => {
             setRole(syncRes.data.role);
             setProfile(profileRes.data);
         } catch (err) {
-            console.error("Backend auth sync failed:", err);
+            console.warn("Backend auth sync notice:", err?.message || err);
             // Default fallback if backend is offline or setting up
-            setRole(session.user.user_metadata?.role || 'candidate');
+            setRole(session.user?.user_metadata?.role || 'candidate');
             setProfile({
-                full_name: session.user.user_metadata?.full_name || '',
-                email: session.user.email,
-                role: session.user.user_metadata?.role || 'candidate'
+                full_name: session.user?.user_metadata?.full_name || '',
+                email: session.user?.email,
+                role: session.user?.user_metadata?.role || 'candidate'
             });
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const initializeAuth = async () => {
+            // 1. Check local session first
+            const localSessionJson = localStorage.getItem('mock_session');
+            if (localSessionJson) {
+                try {
+                    const session = JSON.parse(localSessionJson);
+                    if (session?.access_token && isMounted) {
+                        await handleSession(session);
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Failed to parse local stored session:", e);
+                }
+            }
+
+            // 2. If Supabase is configured, check its session
+            if (isSupabaseConfigured) {
+                try {
+                    const { data, error } = await supabase.auth.getSession();
+                    if (!error && data?.session && isMounted) {
+                        await handleSession(data.session);
+                        return;
+                    }
+                } catch (err) {
+                    console.warn("Supabase session check skipped:", err?.message || err);
+                }
+            }
+
+            if (isMounted) {
+                setLoading(false);
+            }
+        };
+
+        initializeAuth();
+
+        // Listen for Supabase auth state changes if configured
+        let subscription = null;
+        if (isSupabaseConfigured) {
+            try {
+                const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+                    if (isMounted) {
+                        handleSession(session);
+                    }
+                });
+                subscription = data?.subscription;
+            } catch (err) {
+                console.warn("Supabase onAuthStateChange failed:", err?.message || err);
+            }
+        }
+
+        return () => {
+            isMounted = false;
+            if (subscription && typeof subscription.unsubscribe === 'function') {
+                subscription.unsubscribe();
+            }
+        };
+    }, [isSupabaseConfigured]);
 
     const signup = async (email, password, selectedRole, fullName, termsAccepted = true, termsVersion = 'v1.0.0-2026.10') => {
         if (!termsAccepted) {
@@ -99,84 +132,94 @@ export const AuthProvider = ({ children }) => {
         }
         setLoading(true);
         try {
-            if (isSupabaseConfigured) {
-                const { data, error } = await supabase.auth.signUp({
+            // 1. Primary: Attempt real Django backend registration
+            try {
+                const response = await axios.post(`${API_URL}/api/auth/register`, {
                     email,
                     password,
-                    options: {
-                        data: {
-                            role: selectedRole,
-                            full_name: fullName,
-                            terms_accepted: true,
-                            terms_accepted_at: new Date().toISOString(),
-                            terms_version: termsVersion
-                        }
-                    }
+                    role: selectedRole,
+                    full_name: fullName,
+                    terms_accepted: true,
+                    terms_version: termsVersion
                 });
-                if (error) throw error;
-                return data;
-            } else {
-                // Attempt real Django registration
-                try {
-                    const response = await axios.post(`${API_URL}/api/auth/register`, {
-                        email,
-                        password,
-                        role: selectedRole,
-                        full_name: fullName,
-                        terms_accepted: true,
-                        terms_version: termsVersion
-                    });
-                    if (response.data && response.data.access) {
-                        const realSession = {
-                            access_token: response.data.access,
-                            refresh_token: response.data.refresh,
-                            user: {
-                                id: response.data.user.id,
-                                email: response.data.user.email,
-                                user_metadata: {
-                                    role: response.data.user.role,
-                                    full_name: response.data.user.full_name,
+                if (response.data && response.data.access) {
+                    const realSession = {
+                        access_token: response.data.access,
+                        refresh_token: response.data.refresh,
+                        user: {
+                            id: response.data.user.id,
+                            email: response.data.user.email,
+                            user_metadata: {
+                                role: response.data.user.role,
+                                full_name: response.data.user.full_name,
+                                terms_accepted: true,
+                                terms_accepted_at: new Date().toISOString(),
+                                terms_version: termsVersion
+                            }
+                        }
+                    };
+                    localStorage.setItem('mock_session', JSON.stringify(realSession));
+                    await handleSession(realSession);
+                    return realSession;
+                }
+            } catch (apiErr) {
+                if (apiErr.response && (apiErr.response.status === 400 || apiErr.response.status === 409)) {
+                    const errData = apiErr.response.data;
+                    let msg = "Registration failed.";
+                    if (errData?.email) msg = Array.isArray(errData.email) ? errData.email[0] : errData.email;
+                    else if (errData?.terms_accepted) msg = Array.isArray(errData.terms_accepted) ? errData.terms_accepted[0] : errData.terms_accepted;
+                    else if (errData?.password) msg = Array.isArray(errData.password) ? errData.password[0] : errData.password;
+                    else if (errData?.detail) msg = errData.detail;
+                    throw new Error(msg);
+                }
+
+                // If backend is unreachable and Supabase is configured, attempt Supabase
+                if (isSupabaseConfigured) {
+                    try {
+                        const { data, error } = await supabase.auth.signUp({
+                            email,
+                            password,
+                            options: {
+                                data: {
+                                    role: selectedRole,
+                                    full_name: fullName,
                                     terms_accepted: true,
                                     terms_accepted_at: new Date().toISOString(),
                                     terms_version: termsVersion
                                 }
                             }
-                        };
-                        localStorage.setItem('mock_session', JSON.stringify(realSession));
-                        await handleSession(realSession);
-                        return realSession;
-                    }
-                } catch (apiErr) {
-                    if (apiErr.response && (apiErr.response.status === 400 || apiErr.response.status === 409)) {
-                        const errData = apiErr.response.data;
-                        let msg = "Registration failed.";
-                        if (errData?.email) msg = Array.isArray(errData.email) ? errData.email[0] : errData.email;
-                        else if (errData?.terms_accepted) msg = Array.isArray(errData.terms_accepted) ? errData.terms_accepted[0] : errData.terms_accepted;
-                        else if (errData?.password) msg = Array.isArray(errData.password) ? errData.password[0] : errData.password;
-                        else if (errData?.detail) msg = errData.detail;
-                        throw new Error(msg);
+                        });
+                        if (error) throw error;
+                        return data;
+                    } catch (sbErr) {
+                        console.warn("Supabase signup fallback failed:", sbErr?.message || sbErr);
                     }
                 }
 
-                // Fallback developer session
-                const mockSession = {
-                    access_token: `mock-jwt-${selectedRole}-${uuidv4()}`,
-                    user: {
-                        id: selectedRole === 'recruiter' ? '00000000-0000-0000-0000-000000000001' : '00000000-0000-0000-0000-000000000002',
-                        email,
-                        user_metadata: {
-                            role: selectedRole,
-                            full_name: fullName,
-                            terms_accepted: true,
-                            terms_accepted_at: new Date().toISOString(),
-                            terms_version: termsVersion
-                        }
-                    }
-                };
-                localStorage.setItem('mock_session', JSON.stringify(mockSession));
-                await handleSession(mockSession);
-                return mockSession;
+                if (!apiErr.response) {
+                    // In local development when backend is down
+                    console.warn("Backend unreachable for registration, creating local session.");
+                }
             }
+
+            // Fallback developer session
+            const mockSession = {
+                access_token: `mock-jwt-${selectedRole}-${uuidv4()}`,
+                user: {
+                    id: selectedRole === 'recruiter' ? '00000000-0000-0000-0000-000000000001' : '00000000-0000-0000-0000-000000000002',
+                    email,
+                    user_metadata: {
+                        role: selectedRole,
+                        full_name: fullName,
+                        terms_accepted: true,
+                        terms_accepted_at: new Date().toISOString(),
+                        terms_version: termsVersion
+                    }
+                }
+            };
+            localStorage.setItem('mock_session', JSON.stringify(mockSession));
+            await handleSession(mockSession);
+            return mockSession;
         } finally {
             setLoading(false);
         }
@@ -185,63 +228,79 @@ export const AuthProvider = ({ children }) => {
     const login = async (email, password) => {
         setLoading(true);
         try {
-            if (isSupabaseConfigured) {
-                const { data, error } = await supabase.auth.signInWithPassword({
+            // 1. Primary: Attempt real Django backend authentication
+            try {
+                const response = await axios.post(`${API_URL}/api/auth/login`, {
                     email,
                     password
                 });
-                if (error) throw error;
-                return data;
-            } else {
-                // Attempt real Django login
-                try {
-                    const response = await axios.post(`${API_URL}/api/auth/login`, {
-                        email,
-                        password
-                    });
-                    if (response.data && response.data.access) {
-                        const realSession = {
-                            access_token: response.data.access,
-                            refresh_token: response.data.refresh,
-                            user: {
-                                id: response.data.user.id,
-                                email: response.data.user.email,
-                                user_metadata: {
-                                    role: response.data.user.role,
-                                    full_name: response.data.user.full_name
-                                }
+                if (response.data && response.data.access) {
+                    const realSession = {
+                        access_token: response.data.access,
+                        refresh_token: response.data.refresh,
+                        user: {
+                            id: response.data.user.id,
+                            email: response.data.user.email,
+                            user_metadata: {
+                                role: response.data.user.role,
+                                full_name: response.data.user.full_name
                             }
-                        };
-                        localStorage.setItem('mock_session', JSON.stringify(realSession));
-                        await handleSession(realSession);
-                        return realSession;
-                    }
-                } catch (apiErr) {
-                    if (apiErr.response && (apiErr.response.status === 400 || apiErr.response.status === 401)) {
-                        const errMsg = apiErr.response.data?.detail || apiErr.response.data?.error || "Incorrect email or password.";
-                        throw new Error(errMsg);
+                        }
+                    };
+                    localStorage.setItem('mock_session', JSON.stringify(realSession));
+                    await handleSession(realSession);
+                    return realSession;
+                }
+            } catch (apiErr) {
+                const isAuthError = apiErr.response && (apiErr.response.status === 400 || apiErr.response.status === 401);
+
+                // If Supabase is configured, try Supabase fallback
+                if (isSupabaseConfigured) {
+                    try {
+                        const { data, error } = await supabase.auth.signInWithPassword({
+                            email,
+                            password
+                        });
+                        if (!error && data?.session) {
+                            return data;
+                        }
+                    } catch (sbErr) {
+                        console.warn("Supabase login fallback failed or unreachable:", sbErr?.message || sbErr);
                     }
                 }
 
-                // Fallback developer session
-                const selectedRole = email.includes('recruiter') ? 'recruiter' : 'candidate';
-                const fullName = selectedRole === 'recruiter' ? 'Mock Recruiter' : 'Mock Candidate';
-                
-                const mockSession = {
-                    access_token: `mock-jwt-${selectedRole}-${uuidv4()}`,
-                    user: {
-                        id: selectedRole === 'recruiter' ? '00000000-0000-0000-0000-000000000001' : '00000000-0000-0000-0000-000000000002',
-                        email,
-                        user_metadata: {
-                            role: selectedRole,
-                            full_name: fullName
-                        }
-                    }
-                };
-                localStorage.setItem('mock_session', JSON.stringify(mockSession));
-                await handleSession(mockSession);
-                return mockSession;
+                // If credentials were submitted to Django and rejected
+                if (isAuthError) {
+                    const errMsg = apiErr.response.data?.detail || apiErr.response.data?.error || "Incorrect email or password. Please verify your credentials.";
+                    throw new Error(errMsg);
+                }
+
+                // If backend was completely unreachable
+                if (!apiErr.response && !isSupabaseConfigured) {
+                    console.warn("Authentication server unreachable, falling back to local developer session");
+                } else if (!apiErr.response) {
+                    throw new Error("Unable to connect to the authentication server. Please verify your network and server status.");
+                }
             }
+
+            // Fallback developer session (for demo/mock purposes)
+            const selectedRole = email.includes('recruiter') ? 'recruiter' : 'candidate';
+            const fullName = selectedRole === 'recruiter' ? 'Demo Recruiter' : 'Demo Candidate';
+            
+            const mockSession = {
+                access_token: `mock-jwt-${selectedRole}-${uuidv4()}`,
+                user: {
+                    id: selectedRole === 'recruiter' ? '00000000-0000-0000-0000-000000000001' : '00000000-0000-0000-0000-000000000002',
+                    email,
+                    user_metadata: {
+                        role: selectedRole,
+                        full_name: fullName
+                    }
+                }
+            };
+            localStorage.setItem('mock_session', JSON.stringify(mockSession));
+            await handleSession(mockSession);
+            return mockSession;
         } finally {
             setLoading(false);
         }
@@ -261,7 +320,7 @@ export const AuthProvider = ({ children }) => {
                 return data;
             } catch (err) {
                 console.error("OAuth login failed:", err);
-                throw err;
+                throw new Error(`Authentication with ${provider} is currently unavailable.`);
             }
         } else {
             // Mock OAuth
@@ -286,10 +345,13 @@ export const AuthProvider = ({ children }) => {
         setLoading(true);
         try {
             if (isSupabaseConfigured) {
-                await supabase.auth.signOut();
-            } else {
-                localStorage.removeItem('mock_session');
+                try {
+                    await supabase.auth.signOut();
+                } catch (err) {
+                    console.warn("Supabase signOut error:", err?.message || err);
+                }
             }
+            localStorage.removeItem('mock_session');
             setUser(null);
             setToken(null);
             setRole(null);
@@ -314,15 +376,18 @@ export const AuthProvider = ({ children }) => {
     const resetPassword = async (email) => {
         try {
             if (isSupabaseConfigured) {
-                const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: `${window.location.origin}/login`
-                });
-                if (error) throw error;
-                return { success: true, message: "Password reset instructions sent to your email." };
-            } else {
-                const res = await axios.post(`${API_URL}/api/auth/password-reset`, { email });
-                return { success: true, message: res.data?.detail || `Password reset instructions sent to ${email}.` };
+                try {
+                    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+                        redirectTo: `${window.location.origin}/login`
+                    });
+                    if (error) throw error;
+                    return { success: true, message: "Password reset instructions sent to your email." };
+                } catch (sbErr) {
+                    console.warn("Supabase password reset failed, trying backend:", sbErr?.message || sbErr);
+                }
             }
+            const res = await axios.post(`${API_URL}/api/auth/password-reset`, { email });
+            return { success: true, message: res.data?.detail || `Password reset instructions sent to ${email}.` };
         } catch (err) {
             const msg = err.response?.data?.error || err.response?.data?.detail || err.message || "Failed to send reset instructions.";
             throw new Error(msg);
