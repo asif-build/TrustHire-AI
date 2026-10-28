@@ -13,27 +13,42 @@ const apiClient = axios.create({
 // Request interceptor to attach JWT token
 apiClient.interceptors.request.use(async (config) => {
     let token = null;
-    try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            token = session.access_token;
+
+    // 1. Primary: Local authenticated session (Django SimpleJWT access token)
+    const mockSessionJson = localStorage.getItem('mock_session');
+    if (mockSessionJson) {
+        try {
+            const mockSession = JSON.parse(mockSessionJson);
+            if (mockSession?.access_token) {
+                token = mockSession.access_token;
+            }
+        } catch (e) {
+            // Ignore parsing errors
         }
-    } catch (e) {
-        // Supabase not configured or failed
     }
 
-    // Fallback to local mock session for local development
+    // 2. Standalone token fallback
     if (!token) {
-        const mockSessionJson = localStorage.getItem('mock_session');
-        if (mockSessionJson) {
-            try {
-                const mockSession = JSON.parse(mockSessionJson);
-                if (mockSession?.access_token) {
-                    token = mockSession.access_token;
-                }
-            } catch (e) {
-                // Ignore parsing errors
+        token = localStorage.getItem('token');
+    }
+
+    // 3. Supabase fallback (only when explicitly configured with non-placeholder host)
+    const isSupabaseConfigured = 
+        Boolean(
+            import.meta.env.VITE_SUPABASE_URL && 
+            import.meta.env.VITE_SUPABASE_URL !== 'https://your-project.supabase.co' && 
+            import.meta.env.VITE_SUPABASE_ANON_KEY && 
+            import.meta.env.VITE_SUPABASE_ANON_KEY !== 'your-anon-key'
+        );
+
+    if (!token && isSupabaseConfigured) {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+                token = session.access_token;
             }
+        } catch (e) {
+            // Supabase not reachable
         }
     }
 

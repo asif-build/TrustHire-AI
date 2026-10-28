@@ -164,13 +164,22 @@ export default function CareerProfile() {
 
       setUploadProgress(100);
       setUploadStep('Complete');
-      setMessage('Resume uploaded successfully. Your profile details have been synced.');
+      
+      // Auto-populate extracted data in state immediately
+      if (res?.data?.profile) {
+        const p = res.data.profile;
+        if (p.skills) setSkills(p.skills);
+        if (p.headline) setHeadline(p.headline);
+        if (p.summary) setSummary(p.summary);
+      }
+
+      setMessage('Resume uploaded successfully! Your skills, experience, and job matches have been synced.');
 
       // Refresh list & profile
       await loadData();
       return res;
     } catch (err) {
-      const msg = err.response?.data?.error || 'Failed to upload document. Please ensure it is a valid file.';
+      const msg = err.response?.data?.error || err.response?.data?.detail || 'Failed to upload document. Please ensure it is a valid file.';
       setErrorMessage(msg);
       throw err;
     } finally {

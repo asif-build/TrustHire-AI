@@ -123,17 +123,32 @@ def extract_text_from_pdf(file_path):
 
         extracted_pages = []
         for i, page in enumerate(reader.pages):
-            text = page.extract_text()
-            if text:
-                extracted_pages.append(text.strip())
+            try:
+                text = page.extract_text()
+                if text:
+                    extracted_pages.append(text.strip())
+            except Exception:
+                pass
 
         full_text = "\n\n".join(extracted_pages).strip()
-        if len(full_text) < 30:
+        
+        # If page text extraction is short, check form fields and annotations
+        if len(full_text) < 15:
+            try:
+                fields = reader.get_fields()
+                if fields:
+                    field_vals = [str(v.get('/V', '')) for v in fields.values() if v.get('/V')]
+                    if field_vals:
+                        full_text = (full_text + "\n" + "\n".join(field_vals)).strip()
+            except Exception:
+                pass
+
+        if len(full_text) < 10:
             return {
                 'success': False,
                 'text': '',
                 'status': 'ocr_required',
-                'error': 'This PDF appears to be a scanned image or empty document without selectable text. Please provide an exported PDF with selectable text or DOCX format.'
+                'error': 'This PDF appears to be a scanned image or empty document without selectable digital text. Please provide an exported PDF with selectable text or DOCX format.'
             }
 
         return {
