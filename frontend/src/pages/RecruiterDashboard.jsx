@@ -1,3 +1,5 @@
+import { SmoothInput } from '../components/ui/smooth-input';
+import { ThemeToggleButton } from '../components/ui/theme-toggle';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { jobsApi, matchingApi } from '../services/api';
@@ -180,6 +182,7 @@ export default function RecruiterDashboard() {
                     </div>
 
                     <div className="flex items-center gap-4">
+                        <ThemeToggleButton variant="circle" start="top-right" />
                         <div className="text-right hidden sm:block">
                             <div className="text-sm font-semibold text-[#121613]">{profile?.full_name || 'Recruiter'}</div>
                             <div className="text-[10px] text-[#516254] uppercase tracking-wider font-light">{profile?.company_name || 'Corporate Account'}</div>
@@ -266,52 +269,52 @@ export default function RecruiterDashboard() {
                             <div className="bg-[#fafffa] border border-[#c8d2c8]/40 p-4 rounded-[14px] grid grid-cols-2 md:grid-cols-5 gap-4">
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-[#516254] uppercase tracking-wider font-medium">Min YOE</label>
-                                    <input 
+                                    <SmoothInput 
                                         type="number" 
                                         value={minExp} 
                                         onChange={(e) => setMinExp(e.target.value)}
                                         placeholder="e.g. 2" 
-                                        className="w-full bg-[#fafffa] border border-[#c8d2c8] rounded-[10px] px-3 py-1.5 text-xs text-[#121613] focus:outline-none focus:border-[#121613]"
+                                        className="px-3 py-1.5 text-xs"
                                     />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-[#516254] uppercase tracking-wider font-medium">Notice Max</label>
-                                    <input 
+                                    <SmoothInput 
                                         type="number" 
                                         value={maxNotice} 
                                         onChange={(e) => setMaxNotice(e.target.value)}
                                         placeholder="e.g. 30" 
-                                        className="w-full bg-[#fafffa] border border-[#c8d2c8] rounded-[10px] px-3 py-1.5 text-xs text-[#121613] focus:outline-none focus:border-[#121613]"
+                                        className="px-3 py-1.5 text-xs"
                                     />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-[#516254] uppercase tracking-wider font-medium">Location</label>
-                                    <input 
+                                    <SmoothInput 
                                         type="text" 
                                         value={location} 
                                         onChange={(e) => setLocation(e.target.value)}
                                         placeholder="Bangalore" 
-                                        className="w-full bg-[#fafffa] border border-[#c8d2c8] rounded-[10px] px-3 py-1.5 text-xs text-[#121613] focus:outline-none focus:border-[#121613]"
+                                        className="px-3 py-1.5 text-xs"
                                     />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-[#516254] uppercase tracking-wider font-medium">Skills</label>
-                                    <input 
+                                    <SmoothInput 
                                         type="text" 
                                         value={skillsQuery} 
                                         onChange={(e) => setSkillsQuery(e.target.value)}
                                         placeholder="Python, React" 
-                                        className="w-full bg-[#fafffa] border border-[#c8d2c8] rounded-[10px] px-3 py-1.5 text-xs text-[#121613] focus:outline-none focus:border-[#121613]"
+                                        className="px-3 py-1.5 text-xs"
                                     />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-[10px] text-[#516254] uppercase tracking-wider font-medium">Min Score</label>
-                                    <input 
+                                    <SmoothInput 
                                         type="number" 
                                         value={minScore} 
                                         onChange={(e) => setMinScore(e.target.value)}
                                         placeholder="70" 
-                                        className="w-full bg-[#fafffa] border border-[#c8d2c8] rounded-[10px] px-3 py-1.5 text-xs text-[#121613] focus:outline-none focus:border-[#121613]"
+                                        className="px-3 py-1.5 text-xs"
                                     />
                                 </div>
                             </div>
@@ -665,13 +668,13 @@ export default function RecruiterDashboard() {
                         <form onSubmit={handleCreateJob} className="space-y-4">
                             <div className="space-y-1.5">
                                 <label className="text-[10px] text-[#516254] uppercase tracking-wider font-semibold">Job Title</label>
-                                <input 
+                                <SmoothInput 
                                     type="text" 
                                     required
                                     value={newJobTitle}
                                     onChange={(e) => setNewJobTitle(e.target.value)}
                                     placeholder="e.g. Senior Frontend Engineer" 
-                                    className="w-full bg-[#fafffa] border border-[#c8d2c8] rounded-[10px] px-3.5 py-2.5 text-xs text-[#121613] focus:outline-none focus:border-[#121613]"
+                                    className="px-3.5 py-2.5 text-xs"
                                 />
                             </div>
                             <div className="space-y-1.5">

@@ -93,7 +93,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const signup = async (email, password, selectedRole, fullName) => {
+    const signup = async (email, password, selectedRole, fullName, termsAccepted = true, termsVersion = 'v1.0.0-2026.10') => {
+        if (!termsAccepted) {
+            throw new Error('You must accept the Terms of Service and Privacy Policy to create an account.');
+        }
         setLoading(true);
         try {
             if (isSupabaseConfigured) {
@@ -103,14 +106,59 @@ export const AuthProvider = ({ children }) => {
                     options: {
                         data: {
                             role: selectedRole,
-                            full_name: fullName
+                            full_name: fullName,
+                            terms_accepted: true,
+                            terms_accepted_at: new Date().toISOString(),
+                            terms_version: termsVersion
                         }
                     }
                 });
                 if (error) throw error;
                 return data;
             } else {
-                // Mock registration: save mock session in local storage
+                // Attempt real Django registration
+                try {
+                    const response = await axios.post(`${API_URL}/api/auth/register`, {
+                        email,
+                        password,
+                        role: selectedRole,
+                        full_name: fullName,
+                        terms_accepted: true,
+                        terms_version: termsVersion
+                    });
+                    if (response.data && response.data.access) {
+                        const realSession = {
+                            access_token: response.data.access,
+                            refresh_token: response.data.refresh,
+                            user: {
+                                id: response.data.user.id,
+                                email: response.data.user.email,
+                                user_metadata: {
+                                    role: response.data.user.role,
+                                    full_name: response.data.user.full_name,
+                                    terms_accepted: true,
+                                    terms_accepted_at: new Date().toISOString(),
+                                    terms_version: termsVersion
+                                }
+                            }
+                        };
+                        localStorage.setItem('mock_session', JSON.stringify(realSession));
+                        await handleSession(realSession);
+                        return realSession;
+                    }
+                } catch (apiErr) {
+                    if (apiErr.response && (apiErr.response.status === 400 || apiErr.response.status === 409)) {
+                        const errData = apiErr.response.data;
+                        let msg = "Registration failed.";
+                        if (errData?.email) msg = Array.isArray(errData.email) ? errData.email[0] : errData.email;
+                        else if (errData?.terms_accepted) msg = Array.isArray(errData.terms_accepted) ? errData.terms_accepted[0] : errData.terms_accepted;
+                        else if (errData?.password) msg = Array.isArray(errData.password) ? errData.password[0] : errData.password;
+                        else if (errData?.detail) msg = errData.detail;
+                        throw new Error(msg);
+                    }
+                }
+
+                // Fallback developer session
                 const mockSession = {
                     access_token: `mock-jwt-${selectedRole}-${uuidv4()}`,
                     user: {
@@ -118,7 +166,10 @@ export const AuthProvider = ({ children }) => {
                         email,
                         user_metadata: {
                             role: selectedRole,
-                            full_name: fullName
+                            full_name: fullName,
+                            terms_accepted: true,
+                            terms_accepted_at: new Date().toISOString(),
+                            terms_version: termsVersion
                         }
                     }
                 };
@@ -142,7 +193,37 @@ export const AuthProvider = ({ children }) => {
                 if (error) throw error;
                 return data;
             } else {
-                // Mock login: determine role based on email/keywords or choose candidate by default
+                // Attempt real Django login
+                try {
+                    const response = await axios.post(`${API_URL}/api/auth/login`, {
+                        email,
+                        password
+                    });
+                    if (response.data && response.data.access) {
+                        const realSession = {
+                            access_token: response.data.access,
+                            refresh_token: response.data.refresh,
+                            user: {
+                                id: response.data.user.id,
+                                email: response.data.user.email,
+                                user_metadata: {
+                                    role: response.data.user.role,
+                                    full_name: response.data.user.full_name
+                                }
+                            }
+                        };
+                        localStorage.setItem('mock_session', JSON.stringify(realSession));
+                        await handleSession(realSession);
+                        return realSession;
+                    }
+                } catch (apiErr) {
+                    if (apiErr.response && (apiErr.response.status === 400 || apiErr.response.status === 401)) {
+                        const errMsg = apiErr.response.data?.detail || apiErr.response.data?.error || "Incorrect email or password.";
+                        throw new Error(errMsg);
+                    }
+                }
+
+                // Fallback developer session
                 const selectedRole = email.includes('recruiter') ? 'recruiter' : 'candidate';
                 const fullName = selectedRole === 'recruiter' ? 'Mock Recruiter' : 'Mock Candidate';
                 
@@ -230,6 +311,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const resetPassword = async (email) => {
+        try {
+            if (isSupabaseConfigured) {
+                const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+                    redirectTo: `${window.location.origin}/login`
+                });
+                if (error) throw error;
+                return { success: true, message: "Password reset instructions sent to your email." };
+            } else {
+                const res = await axios.post(`${API_URL}/api/auth/password-reset`, { email });
+                return { success: true, message: res.data?.detail || `Password reset instructions sent to ${email}.` };
+            }
+        } catch (err) {
+            const msg = err.response?.data?.error || err.response?.data?.detail || err.message || "Failed to send reset instructions.";
+            throw new Error(msg);
+        }
+    };
+
     // Lightweight UUID generator for mock tokens
     const uuidv4 = () => {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -248,7 +347,10 @@ export const AuthProvider = ({ children }) => {
         login,
         loginWithOAuth,
         logout,
-        refreshProfile
+        refreshProfile,
+        resetPassword,
+        isSocialAuthEnabled: Boolean(isSupabaseConfigured),
+        isSupabaseConfigured: Boolean(isSupabaseConfigured)
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

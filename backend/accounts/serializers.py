@@ -7,15 +7,22 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'full_name', 'role', 'phone', 'profile_image', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = ['id', 'email', 'full_name', 'role', 'phone', 'profile_image', 'terms_accepted', 'terms_accepted_at', 'terms_version', 'created_at']
+        read_only_fields = ['id', 'terms_accepted', 'terms_accepted_at', 'terms_version', 'created_at']
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
+    terms_accepted = serializers.BooleanField(write_only=True, required=True)
+    terms_version = serializers.CharField(write_only=True, required=False, default='v1.0.0-2026.10')
     
     class Meta:
         model = User
-        fields = ['email', 'password', 'full_name', 'role', 'phone']
+        fields = ['email', 'password', 'full_name', 'role', 'phone', 'terms_accepted', 'terms_version']
+
+    def validate_terms_accepted(self, value):
+        if not value:
+            raise serializers.ValidationError("You must review and accept the Terms of Service and Privacy Policy to create an account.")
+        return value
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -28,12 +35,21 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
+        from django.utils import timezone
+        now = timezone.now()
+        terms_version = validated_data.pop('terms_version', 'v1.0.0-2026.10')
+        validated_data.pop('terms_accepted', True)
+
         user = User.objects.create_user(
             email=validated_data['email'],
             password=validated_data['password'],
             full_name=validated_data.get('full_name', ''),
             role=validated_data.get('role', 'candidate'),
-            phone=validated_data.get('phone', '')
+            phone=validated_data.get('phone', ''),
+            terms_accepted=True,
+            terms_accepted_at=now,
+            privacy_accepted_at=now,
+            terms_version=terms_version
         )
         return user
 

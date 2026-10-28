@@ -8,13 +8,17 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('accounts.urls')),
+    path('api/users/', include('accounts.urls')),
     path('api/company/', include('companies.urls')),
+    path('api/companies/', include('companies.urls')),
     path('api/candidate/', include('candidates.urls')),
     path('api/recruiter/', include('recruiters.urls')),
     path('api/jobs/', include('jobs.urls')),
     path('api/resume/', include('resumes.urls')),
+    path('api/resumes/', include('resumes.urls')),
     path('api/rankings/', include('rankings.urls')),
     path('api/ai/', include('ai.urls')),
+    path('api/career/', include('career.urls')),
     
     # Swagger / OpenAPI documentation urls
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

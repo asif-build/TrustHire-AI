@@ -60,3 +60,30 @@ class PasswordResetView(APIView):
             return Response({"error": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
         # Placeholder password reset behavior
         return Response({"detail": f"Password reset instructions sent to {email}."}, status=status.HTTP_200_OK)
+
+class UserProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from .serializers import UserSerializer
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data)
+
+    def put(self, request):
+        from .serializers import UserSerializer
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class UserSyncView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        return Response({
+            "id": str(request.user.id),
+            "email": request.user.email,
+            "role": request.user.role,
+            "full_name": request.user.full_name
+        })

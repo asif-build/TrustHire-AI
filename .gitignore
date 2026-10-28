@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/venv/
+venv/
+*.egg-info/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.local
+
+# Logs
+*.log
+
+# Scratch / Local
+scratch/
+backend/scratch/
+.DS_Store
