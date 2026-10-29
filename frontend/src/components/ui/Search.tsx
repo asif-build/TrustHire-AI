@@ -202,8 +202,9 @@ export function Seek({
     let at = { x: 0, y: 0 };
     const publish = () => { raf = 0; setLean(at); };
     const read = (e: PointerEvent) => {
-      const b = el.getBoundingClientRect();
-      const k = b.width / (el.offsetWidth || b.width) || 1;
+      const skin = el.querySelector<HTMLElement>(".sek-skin") || el;
+      const b = skin.getBoundingClientRect();
+      const k = b.width / (skin.offsetWidth || b.width) || 1;
       const dx = (e.clientX - (b.left + b.width / 2)) / k;
       const dy = (e.clientY - (b.top + b.height / 2)) / k;
       const d = Math.hypot(dx, dy);

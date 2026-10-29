@@ -169,21 +169,14 @@ export default function LearningHubPage() {
       <TrustHireNavbar />
 
       {/* Hero Header */}
-      <header className="pt-10 pb-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
+      <header className="pt-8 pb-6 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-[#EAEAE5]">
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-[#F4F4F0] text-[#121613] font-bold">
-                Career Readiness Platform
-              </span>
-              <span className="text-xs font-mono text-[#9A9A92]">•</span>
-              <span className="text-xs font-mono text-[#6E6E66]">Verified Knowledge & Tracked Roadmaps</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-normal tracking-[-0.035em] text-[#121613] font-serif">
-              Build skills. Become job-ready.
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[#121613]">
+              Learning Hub
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-[#6E6E66] max-w-2xl leading-relaxed">
-              Learn the skills employers need, follow curated learning paths, and track your progress towards your career goals.
+            <p className="mt-1.5 text-xs sm:text-sm text-[#6E6E66] max-w-2xl leading-relaxed">
+              Curated lessons, official documentation, and courses to build job-ready skills.
             </p>
           </div>
 
@@ -219,37 +212,6 @@ export default function LearningHubPage() {
               </Link>
             </div>
           )}
-        </div>
-
-        {/* 3 Core Questions Pill Banner */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 bg-white p-4 rounded-2xl border border-[#EAEAE5] text-xs">
-          <div className="flex items-start gap-2.5 p-2">
-            <span className="w-5 h-5 rounded-full bg-[#F4F4F0] text-[#121613] font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
-              1
-            </span>
-            <div>
-              <p className="font-semibold text-[#121613]">What do I need to learn?</p>
-              <p className="text-[#6E6E66] text-[11px] mt-0.5">Role-based requirements extracted from active job postings.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2.5 p-2">
-            <span className="w-5 h-5 rounded-full bg-[#F4F4F0] text-[#121613] font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
-              2
-            </span>
-            <div>
-              <p className="font-semibold text-[#121613]">Where can I learn it?</p>
-              <p className="text-[#6E6E66] text-[11px] mt-0.5">Genuine YouTube lessons, MDN, FreeCodeCamp, and official docs.</p>
-            </div>
-          </div>
-          <div className="flex items-start gap-2.5 p-2">
-            <span className="w-5 h-5 rounded-full bg-[#F4F4F0] text-[#121613] font-mono text-[11px] font-bold flex items-center justify-center shrink-0">
-              3
-            </span>
-            <div>
-              <p className="font-semibold text-[#121613]">How much have I completed?</p>
-              <p className="text-[#6E6E66] text-[11px] mt-0.5">Observable playback tracking and verifiable task completion.</p>
-            </div>
-          </div>
         </div>
 
         {/* Search Bar & Role Pill Selector */}

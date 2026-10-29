@@ -1,26 +1,96 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import TrustHireNavbar from '../../components/common/TrustHireNavbar';
 import CompanyLogo from '../../components/common/CompanyLogo';
 import Search from '../../components/ui/Search';
 import SaveButton from '../../components/kokonutui/save-button';
+import SmoothTab from '../../components/kokonutui/smooth-tab';
 import { companiesApi, careerApi } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import {
   ArrowRight, X, ChevronDown, Filter, Bookmark,
-  MapPin, Globe, Sparkles, Building2, Briefcase, Check
+  MapPin, Globe, Building2, Briefcase, Check
 } from 'lucide-react';
 
 const TABS = [
-  { id: 'all', label: 'Explore All' },
-  { id: 'recommended', label: 'Personalised For You ✨' },
-  { id: 'india', label: 'India' },
-  { id: 'global', label: 'Global' },
-  { id: 'startups', label: 'Startups' },
-  { id: 'hiring', label: 'Hiring Now' },
+  { id: 'all', title: 'Explore All', label: 'Explore All' },
+  { id: 'recommended', title: 'Personalised for You', label: 'Personalised for You' },
+  { id: 'india', title: 'India', label: 'India' },
+  { id: 'global', title: 'Global', label: 'Global' },
+  { id: 'startups', title: 'Startups', label: 'Startups' },
+  { id: 'hiring', title: 'Hiring Now', label: 'Hiring Now' },
 ];
+
+// KokonutUI Matched Spring Physics
+const TAB_SPRING = { type: 'spring', stiffness: 420, damping: 38 };
+const EASE_OUT = [0.23, 1, 0.32, 1];
+
+const tabVariants = {
+  enter: (direction) => ({
+    x: direction > 0 ? 36 : -36,
+    opacity: 0,
+    filter: 'blur(3px)',
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    filter: 'blur(0px)',
+    transition: {
+      x: TAB_SPRING,
+      opacity: { duration: 0.22, ease: EASE_OUT },
+      filter: { duration: 0.22, ease: EASE_OUT },
+    },
+  },
+  exit: (direction) => ({
+    x: direction > 0 ? -28 : 28,
+    opacity: 0,
+    filter: 'blur(3px)',
+    transition: {
+      x: TAB_SPRING,
+      opacity: { duration: 0.15, ease: EASE_OUT },
+      filter: { duration: 0.15, ease: EASE_OUT },
+    },
+  }),
+};
+
+function SkeletonCardGrid() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div
+          key={i}
+          className="bg-white rounded-2xl border border-[#EAEAE5] p-5 flex flex-col justify-between h-[230px] animate-pulse shadow-2xs"
+        >
+          <div>
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3.5">
+                <div className="w-12 h-12 rounded-xl bg-[#F0F0EE]" />
+                <div className="space-y-2">
+                  <div className="w-28 h-4 rounded bg-[#F0F0EE]" />
+                  <div className="w-16 h-3 rounded bg-[#F0F0EE]" />
+                </div>
+              </div>
+              <div className="w-16 h-7 rounded-full bg-[#F0F0EE]" />
+            </div>
+            <div className="mt-4 space-y-2">
+              <div className="w-full h-3 rounded bg-[#F0F0EE]" />
+              <div className="w-4/5 h-3 rounded bg-[#F0F0EE]" />
+            </div>
+          </div>
+          <div className="pt-3 border-t border-[#F2F2EE] flex items-center justify-between">
+            <div className="w-20 h-3 rounded bg-[#F0F0EE]" />
+            <div className="w-12 h-3 rounded bg-[#F0F0EE]" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function CompanyDirectoryPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const [companies, setCompanies] = useState([]);
@@ -38,6 +108,11 @@ export default function CompanyDirectoryPage() {
   // Active Discovery Tab from URL or default 'all'
   const activeTab = searchParams.get('tab') || 'all';
 
+  // Direction tracking for matching spring tab animation
+  const prevTabRef = useRef(activeTab);
+  const [tabDirection, setTabDirection] = useState(1);
+  const cacheRef = useRef({});
+
   // Filters
   const [search, setSearch] = useState(searchParams.get('q') || '');
   const [selectedIndustry, setSelectedIndustry] = useState('All');
@@ -46,7 +121,15 @@ export default function CompanyDirectoryPage() {
   const [selectedJobType, setSelectedJobType] = useState('All');
   const [selectedExpLevel, setSelectedExpLevel] = useState('All');
 
+  const getTabIndex = (tabId) => TABS.findIndex((t) => t.id === tabId);
+
   const setTab = (tabId) => {
+    const currentIdx = getTabIndex(tabId);
+    const prevIdx = getTabIndex(prevTabRef.current);
+    const newDir = currentIdx >= prevIdx ? 1 : -1;
+    setTabDirection(newDir);
+    prevTabRef.current = tabId;
+
     const params = new URLSearchParams(searchParams);
     if (tabId === 'all') {
       params.delete('tab');
@@ -57,7 +140,16 @@ export default function CompanyDirectoryPage() {
   };
 
   const fetchCompanies = async () => {
-    setLoading(true);
+    const cacheKey = `${activeTab}_${search.trim()}_${selectedIndustry}_${selectedCountry}_${selectedStage}_${selectedJobType}_${selectedExpLevel}`;
+    if (cacheRef.current[cacheKey]) {
+      const cached = cacheRef.current[cacheKey];
+      setCompanies(cached.companies);
+      setTotalCount(cached.count);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     setError(null);
     try {
       if (activeTab === 'recommended') {
@@ -65,6 +157,7 @@ export default function CompanyDirectoryPage() {
         const recList = recRes.data || [];
         setCompanies(recList);
         setTotalCount(recList.length);
+        cacheRef.current[cacheKey] = { companies: recList, count: recList.length };
         setLoading(false);
         return;
       }
@@ -80,8 +173,11 @@ export default function CompanyDirectoryPage() {
 
       const res = await companiesApi.list(params);
       const data = res.data;
-      setCompanies(data.companies || []);
-      setTotalCount(data.count ?? (data.companies?.length || 0));
+      const list = data.companies || [];
+      const count = data.count ?? (list.length || 0);
+      setCompanies(list);
+      setTotalCount(count);
+      cacheRef.current[cacheKey] = { companies: list, count };
 
       if (data.industries && industries.length === 0) {
         setIndustries(['All', ...data.industries]);
@@ -112,15 +208,20 @@ export default function CompanyDirectoryPage() {
   }, [activeTab, search, selectedIndustry, selectedCountry, selectedStage, selectedJobType, selectedExpLevel]);
 
   const handleToggleSave = async (slug, e) => {
-    e.preventDefault();
-    e.stopPropagation();
+    if (e?.preventDefault) e.preventDefault();
+    if (e?.stopPropagation) e.stopPropagation();
+    if (!user) {
+      navigate('/login');
+      return;
+    }
     try {
       const res = await companiesApi.toggleSave(slug);
+      const isSaved = Boolean(res.data?.is_saved);
       setCompanies((prev) =>
-        prev.map((c) => (c.slug === slug ? { ...c, is_saved: res.data.is_saved } : c))
+        prev.map((c) => (c.slug === slug ? { ...c, is_saved: isSaved } : c))
       );
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('Failed to toggle save company:', err);
     }
   };
 
@@ -179,33 +280,24 @@ export default function CompanyDirectoryPage() {
           />
         </div>
 
-        {/* Main Discovery Tabs (Y Combinator Directory Style) */}
-        <div className="mt-6 flex items-center justify-between border-b border-[#EAEAE5] gap-4 overflow-x-auto scrollbar-none">
-          <div className="flex items-center gap-1 sm:gap-2 pb-px shrink-0">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setTab(tab.id)}
-                  className={`px-3.5 sm:px-4 py-2.5 text-xs sm:text-sm font-medium transition-all relative whitespace-nowrap cursor-pointer ${
-                    isActive
-                      ? 'text-[#121613] font-semibold'
-                      : 'text-[#6E6E66] hover:text-[#121613]'
-                  }`}
-                >
-                  <span>{tab.label}</span>
-                  {isActive && (
-                    <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#121613] rounded-full" />
-                  )}
-                </button>
-              );
-            })}
+        {/* Main Discovery Tabs (KokonutUI SmoothTab) */}
+        <div className="mt-6 flex items-center justify-between gap-4 border-b border-[#EAEAE5] pb-3 overflow-x-auto scrollbar-none">
+          <div className="shrink-0">
+            <SmoothTab
+              items={TABS}
+              value={activeTab}
+              onChange={(tabId) => setTab(tabId)}
+              className="w-auto max-w-none"
+              tablistClassName="bg-[#F0F0EE] p-1 rounded-full border border-black/[0.04]"
+              activeColor="bg-[#121613] text-white"
+              activeTextColor="text-white"
+              label="Company Discovery Categories"
+            />
           </div>
 
           <button
             onClick={() => setMobileFiltersOpen(!mobileFiltersOpen)}
-            className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5E0] text-xs font-medium text-[#121613] mb-2 shrink-0 cursor-pointer"
+            className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E5E5E0] text-xs font-medium text-[#121613] shrink-0 cursor-pointer"
           >
             <Filter size={13} />
             <span>Filters</span>
@@ -320,47 +412,53 @@ export default function CompanyDirectoryPage() {
         {/* Results Summary Bar */}
         <div className="mt-5 flex items-center justify-between text-xs text-[#82827A] pb-2">
           <span className="font-medium text-[#121613]">
-            {loading ? 'Discovering companies...' : `Showing ${totalCount} ${totalCount === 1 ? 'company' : 'companies'}`}
-          </span>
-          <span className="font-mono text-[11px] text-[#9A9A92]">
-            Authentic Corporate Registries & Live ATS Feeds
+            {loading ? 'Loading...' : `${totalCount} ${totalCount === 1 ? 'company' : 'companies'}`}
           </span>
         </div>
       </header>
 
-      {/* Main Content: YC-Inspired Informative Company Cards */}
-      <main className="flex-1 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full pb-20">
-        {loading ? (
-          <div className="py-24 text-center">
-            <div className="inline-block w-6 h-6 border-2 border-[#121613] border-t-transparent rounded-full animate-spin mb-2" />
-            <p className="text-xs text-[#6E6E66]">Loading company intelligence...</p>
-          </div>
-        ) : error ? (
-          <div className="py-20 text-center max-w-sm mx-auto">
-            <p className="text-sm text-[#121613] mb-3">{error}</p>
-            <button
-              onClick={fetchCompanies}
-              className="text-xs font-medium text-[#121613] underline hover:no-underline cursor-pointer"
-            >
-              Try again
-            </button>
-          </div>
-        ) : companies.length === 0 ? (
-          <div className="py-24 text-center max-w-md mx-auto">
-            <p className="text-base font-medium text-[#121613]">No companies found</p>
-            <p className="mt-1 text-xs text-[#6E6E66]">
-              No verified company records matched your current discovery filters.
-            </p>
-            {hasActiveFilters && (
-              <button
-                onClick={clearAllFilters}
-                className="mt-4 px-4 py-2 bg-[#121613] text-white text-xs font-medium rounded-xl hover:bg-black transition-colors cursor-pointer"
-              >
-                Clear all filters
-              </button>
-            )}
-          </div>
-        ) : (
+      {/* Main Content: YC-Inspired Informative Company Cards with KokonutUI Spring Motion */}
+      <main className="flex-1 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full pb-20 overflow-hidden">
+        <AnimatePresence mode="wait" custom={tabDirection}>
+          <motion.div
+            key={activeTab}
+            custom={tabDirection}
+            variants={tabVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="w-full"
+          >
+            {loading && companies.length === 0 ? (
+              <SkeletonCardGrid />
+            ) : error ? (
+              <div className="py-20 text-center max-w-sm mx-auto">
+                <p className="text-sm text-[#121613] mb-3">{error}</p>
+                <button
+                  onClick={fetchCompanies}
+                  className="text-xs font-medium text-[#121613] underline hover:no-underline cursor-pointer"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : companies.length === 0 ? (
+              <div className="py-24 text-center max-w-md mx-auto">
+                <p className="text-base font-medium text-[#121613]">No companies found</p>
+                <p className="mt-1 text-xs text-[#6E6E66]">
+                  {activeTab === 'recommended'
+                    ? 'Add skills or target job titles to your profile to receive personalized company recommendations.'
+                    : 'No verified company records matched your current discovery filters.'}
+                </p>
+                {hasActiveFilters && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="mt-4 px-4 py-2 bg-[#121613] text-white text-xs font-medium rounded-xl hover:bg-black transition-colors cursor-pointer"
+                  >
+                    Clear all filters
+                  </button>
+                )}
+              </div>
+            ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {companies.map((company) => {
               const activeCount = company.active_jobs_count || 0;
@@ -412,8 +510,8 @@ export default function CompanyDirectoryPage() {
                       <div onClick={(e) => e.stopPropagation()}>
                         <SaveButton
                           defaultSaved={Boolean(company.is_saved)}
-                          onSave={() => handleToggleSave(company.slug, { stopPropagation: () => {} })}
-                          onRemove={() => handleToggleSave(company.slug, { stopPropagation: () => {} })}
+                          onSave={() => handleToggleSave(company.slug)}
+                          onRemove={() => handleToggleSave(company.slug)}
                         />
                       </div>
                     </div>
@@ -423,10 +521,10 @@ export default function CompanyDirectoryPage() {
                       {company.description || 'Public company intelligence record verified from official filings and regulatory disclosures.'}
                     </p>
 
-                    {/* Personalised Recommendation Reason (Phase 6) */}
+                    {/* Personalised Recommendation Reason */}
                     {company.recommendation_reason && (
-                      <div className="mt-3 p-2.5 rounded-xl bg-[#F8F2E3] text-[11px] text-[#4d422f] border border-black/5 leading-relaxed">
-                        <span className="font-bold text-[#E15A3E] mr-1">Why Recommended:</span>
+                      <div className="mt-3 p-2.5 rounded-xl bg-[#F5F5F7] text-[11px] text-[#6E6E73] border border-black/[0.04] leading-relaxed">
+                        <span className="font-medium text-[#1D1D1F] mr-1">Recommended:</span>
                         {company.recommendation_reason}
                       </div>
                     )}
@@ -460,9 +558,8 @@ export default function CompanyDirectoryPage() {
                   <div className="mt-5 pt-3.5 border-t border-[#EAEAE5] flex items-center justify-between">
                     <div>
                       {activeCount > 0 ? (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#121613] group-hover:text-[#E15A3E] transition-colors">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          <span>{activeCount} {activeCount === 1 ? 'open role' : 'open roles'}</span>
+                        <span className="text-xs font-medium text-[#121613] group-hover:text-black transition-colors">
+                          {activeCount} {activeCount === 1 ? 'open role' : 'open roles'}
                         </span>
                       ) : (
                         <span className="text-xs text-[#9A9A92]">
@@ -481,6 +578,8 @@ export default function CompanyDirectoryPage() {
             })}
           </div>
         )}
+          </motion.div>
+        </AnimatePresence>
       </main>
     </div>
   );

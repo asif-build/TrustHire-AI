@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import TrustHireLogo from '../components/ui/TrustHireLogo';
 import AuthBackground from '../components/auth/AuthBackground';
+import EyeTracker from '../components/ui/EyeTracker';
 
 // Reusable Password Reset Modal connected to official authentication recovery flow.
 const ForgotPasswordModal = ({ isOpen, onClose }) => {
@@ -145,6 +146,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgotModal, setShowForgotModal] = useState(false);
+  const [isTypingPassword, setIsTypingPassword] = useState(false);
 
   // Compute intended redirect destination
   const searchParams = new URLSearchParams(location.search);
@@ -202,10 +204,25 @@ export function LoginPage() {
         <div className="w-full max-w-[440px] mx-auto bg-white rounded-3xl border border-[#EAEAE5] shadow-[0_8px_30px_rgba(0,0,0,0.04)] p-7 sm:p-9 transition-all">
           
           {/* Top Emblem Logo & Wordmark */}
-          <div className="flex justify-center mb-6">
+          <div className="flex justify-center mb-4">
             <Link to="/" aria-label="TrustHire home" className="hover:opacity-85 transition-opacity">
               <TrustHireLogo variant="dark" symbolOnly={false} symbolSize="h-8 sm:h-9" textSize="text-lg sm:text-xl font-normal" />
             </Link>
+          </div>
+
+          {/* Interactive Bencho Eye Tracker Mascot */}
+          <div className="flex justify-center -my-3 mb-2">
+            <div className="w-24 h-24 flex items-center justify-center">
+              <EyeTracker
+                size={80}
+                shape="Cube"
+                eyes="Slant"
+                eyeHeight={isTypingPassword && !showPassword ? 0.12 : isTypingPassword && showPassword ? 1.25 : 1}
+                eyeRound={isTypingPassword && !showPassword ? 0.3 : 1}
+                bounce={35}
+                follow={isTypingPassword ? 20 : 65}
+              />
+            </div>
           </div>
 
           {/* Editorial Display Heading & Supporting Line */}
@@ -280,6 +297,8 @@ export function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
+                  onFocus={() => setIsTypingPassword(true)}
+                  onBlur={() => setIsTypingPassword(false)}
                   onChange={(e) => {
                     setPassword(e.target.value);
                     if (error) setError('');

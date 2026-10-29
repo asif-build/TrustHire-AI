@@ -85,13 +85,13 @@ export default function CareerJourneyTimeline() {
   return (
     <section 
       ref={containerRef}
-      className="relative z-20 py-24 sm:py-32 lg:py-36 bg-[#F7F4ED] text-[#24211E] selection:bg-[#A84E33]/20 selection:text-[#24211E]"
+      className="relative z-20 py-24 sm:py-32 lg:py-36 bg-white text-zinc-900 selection:bg-[#A84E33]/20 selection:text-zinc-900 border-t border-zinc-100"
       aria-label="TrustHire Career Journey"
     >
       <div className="max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-16">
         
         {/* Two-Column Layout: Sticky Left Column + Scrolling Sliding Timeline on Right */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 xl:gap-24 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-14 xl:gap-16 items-start">
           
           {/* ======================================================== */}
           {/* LEFT COLUMN: Sticky Headline & Editorial Photograph       */}
@@ -100,35 +100,35 @@ export default function CareerJourneyTimeline() {
           <div className="lg:col-span-6 lg:sticky lg:top-28 flex flex-col self-start">
             
             {/* Tobias Editorial Serif Headline */}
-            <h2 className="font-editorial-serif text-[clamp(2.35rem,4.8vw,3.85rem)] font-normal leading-[1.12] tracking-[-0.025em] text-[#24211E] max-w-xl">
+            <h2 className="font-editorial-serif text-[clamp(2.35rem,4.8vw,3.85rem)] font-normal leading-[1.12] tracking-[-0.025em] text-zinc-900 max-w-xl">
               Your next career move,
               <br className="hidden sm:inline" />
               {' '}built around your potential.
             </h2>
 
             {/* Supporting Context Paragraph */}
-            <p className="mt-5 sm:mt-6 text-sm sm:text-base text-[#625E58] font-normal leading-relaxed max-w-lg">
+            <p className="mt-5 sm:mt-6 text-sm sm:text-base text-zinc-600 font-normal leading-relaxed max-w-lg">
               From discovering the right companies to preparing for a specific role, TrustHire turns your ambitions into a clear, personalised career roadmap.
             </p>
 
             {/* Large Photographic Image with Rounded Corners */}
             <div className="mt-10 sm:mt-12 relative group">
-              <div className="overflow-hidden rounded-[26px] sm:rounded-[34px] border border-[#E8DFD3] shadow-[0_16px_50px_rgba(36,33,30,0.06)] bg-[#EDE6DC] aspect-[4/3] sm:aspect-[1.2/1]">
+              <div className="overflow-hidden rounded-[26px] sm:rounded-[34px] border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.08)] bg-zinc-100 aspect-[4/5] sm:aspect-[4/5] max-h-[640px] w-full max-w-xl">
                 <img
                   src="/images/trusthire-career-journey.webp"
-                  alt="Candidate thoughtfully reviewing career opportunities"
+                  alt="Steve Jobs with the original Macintosh computer"
                   loading="lazy"
-                  width={1200}
-                  height={1000}
-                  className="w-full h-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.025]"
+                  width={625}
+                  height={819}
+                  className="w-full h-full object-cover object-top transition-transform duration-700 ease-out group-hover:scale-[1.02]"
                 />
               </div>
 
               {/* Ambient warmth */}
               <div 
-                className="absolute -inset-4 -z-10 rounded-[38px] opacity-40 blur-xl pointer-events-none"
+                className="absolute -inset-4 -z-10 rounded-[38px] opacity-30 blur-xl pointer-events-none"
                 style={{
-                  background: 'radial-gradient(circle, rgba(168,78,51,0.08) 0%, transparent 70%)'
+                  background: 'radial-gradient(circle, rgba(0,0,0,0.06) 0%, transparent 70%)'
                 }}
               />
             </div>
@@ -145,7 +145,7 @@ export default function CareerJourneyTimeline() {
               
               {/* Background Neutral Line Track */}
               <div 
-                className="absolute left-[19px] sm:left-[21px] top-5 bottom-12 w-[1.5px] bg-[#E3DACD]"
+                className="absolute left-[19px] sm:left-[21px] top-5 bottom-12 w-[1.5px] bg-zinc-200"
                 aria-hidden="true"
               />
 
@@ -178,8 +178,8 @@ export default function CareerJourneyTimeline() {
                             isActive
                               ? 'bg-[#A84E33] text-white shadow-md shadow-[#A84E33]/25 ring-4 ring-[#A84E33]/15 scale-105'
                               : isPassed
-                              ? 'bg-[#F2ECE1] border border-[#A84E33]/50 text-[#A84E33]'
-                              : 'bg-[#F7F4ED] border border-[#D8CEBF] text-[#8C8377] group-hover:border-[#A84E33]/60 group-hover:text-[#24211E]'
+                              ? 'bg-[#A84E33]/10 border border-[#A84E33]/30 text-[#A84E33]'
+                              : 'bg-zinc-50 border border-zinc-200 text-zinc-500 group-hover:border-[#A84E33]/50 group-hover:text-zinc-900'
                           }`}
                         >
                           {step.number}
@@ -192,9 +192,9 @@ export default function CareerJourneyTimeline() {
                         {/* Step Title in Tobias Serif */}
                         <h3 
                           className={`font-editorial-serif text-lg sm:text-[21px] font-medium tracking-tight mb-2 transition-all duration-400 ease-out ${
-                            isActive 
-                              ? 'text-[#24211E] translate-x-1' 
-                              : 'text-[#8C8377] opacity-60 group-hover:opacity-90 group-hover:text-[#24211E]'
+                            isActive
+                              ? 'text-zinc-900 translate-x-1'
+                              : 'text-zinc-400 opacity-60 group-hover:opacity-90 group-hover:text-zinc-800'
                           }`}
                         >
                           {step.title}
@@ -203,9 +203,9 @@ export default function CareerJourneyTimeline() {
                         {/* Step Description in Geist Sans */}
                         <p 
                           className={`text-xs sm:text-[14px] leading-relaxed transition-all duration-400 ease-out max-w-lg ${
-                            isActive 
-                              ? 'text-[#5A554E] opacity-100' 
-                              : 'text-[#9E958A] opacity-40 group-hover:opacity-75'
+                            isActive
+                              ? 'text-zinc-600 opacity-100'
+                              : 'text-zinc-400 opacity-40 group-hover:opacity-75'
                           }`}
                         >
                           {step.description}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { careerApi, companiesApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import CompanyLogo from '../../components/common/CompanyLogo';
@@ -31,7 +32,8 @@ import UploadDropzone from '../../components/ui/UploadDropzone';
 import AppleActivityCard from '../../components/kokonutui/apple-activity-card';
 import SaveButton from '../../components/kokonutui/save-button';
 import HoldButton from '../../components/kokonutui/hold-button';
-import AvatarPicker, { DEFAULT_AVATARS } from '../../components/kokonutui/avatar-picker';
+import UserAvatar, { ILLUSTRATED_AVATARS, getAvatarById } from '../../components/common/UserAvatar';
+import IllustratedAvatarGallery from '../../components/profile/IllustratedAvatarGallery';
 
 export default function CareerProfile() {
   const fileInputRef = useRef(null);
@@ -57,11 +59,18 @@ export default function CareerProfile() {
   const [showAvatarCustomizer, setShowAvatarCustomizer] = useState(false);
 
   // Avatar State
+  const [avatarType, setAvatarType] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('trusthire_user_avatar_type') || 'illustrated';
+    }
+    return 'illustrated';
+  });
   const [activeAvatarId, setActiveAvatarId] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('trusthire_user_avatar_id') || 'avatar-1';
+      const stored = localStorage.getItem('trusthire_user_avatar_id');
+      if (stored && stored.startsWith('avatar-0')) return stored;
     }
-    return 'avatar-1';
+    return 'avatar-01';
   });
 
   const [customAvatarUrl, setCustomAvatarUrl] = useState(() => {
@@ -82,6 +91,27 @@ export default function CareerProfile() {
   const [prefTitles, setPrefTitles] = useState('');
   const [salMin, setSalMin] = useState('');
   const [salMax, setSalMax] = useState('');
+
+  // Career Activity Targets / Goals State (Apple Watch Activity Rings)
+  const [goals, setGoals] = useState(() => {
+    try {
+      const saved = localStorage.getItem('trusthire_career_goals');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // ignore
+    }
+    return {
+      appliedTarget: 10,
+      skillsTarget: null,
+      savedTarget: 10
+    };
+  });
+  const [isGoalsModalOpen, setIsGoalsModalOpen] = useState(false);
+  const [goalsForm, setGoalsForm] = useState({
+    appliedTarget: 10,
+    skillsTarget: 15,
+    savedTarget: 10
+  });
 
   // Resume Upload State
   const [isUploading, setIsUploading] = useState(false);
@@ -113,10 +143,41 @@ export default function CareerProfile() {
       setSalMin(p.salary_preference_min ?? '');
       setSalMax(p.salary_preference_max ?? '');
 
-      setResumes(resumesRes.data || []);
-      setSavedCompanies(savedCompaniesRes.data || []);
-      setSavedJobs(savedJobsRes.data || []);
-      setApplications(appsRes.data || []);
+      if (p.avatar_type) setAvatarType(p.avatar_type);
+      if (p.avatar_id) setActiveAvatarId(p.avatar_id);
+      if (p.custom_avatar_url) setCustomAvatarUrl(p.custom_avatar_url);
+
+      if (p.avatar_type) setAvatarType(p.avatar_type);
+      if (p.avatar_id) setActiveAvatarId(p.avatar_id);
+      if (p.custom_avatar_url) setCustomAvatarUrl(p.custom_avatar_url);
+
+      // Load user-defined activity ring goals if present in profile
+      if (p.career_interests) {
+        if (typeof p.career_interests === 'object' && !Array.isArray(p.career_interests) && p.career_interests.activity_goals) {
+          setGoals(prev => ({ ...prev, ...p.career_interests.activity_goals }));
+        } else if (Array.isArray(p.career_interests)) {
+          const foundGoals = p.career_interests.find(item => item && (item.__type === 'activity_goals' || item.appliedTarget));
+          if (foundGoals) {
+            setGoals(prev => ({ ...prev, ...foundGoals }));
+          }
+        }
+      }
+
+      const rawResumes = resumesRes.data;
+      const resumesList = Array.isArray(rawResumes) ? rawResumes : (rawResumes?.resumes || []);
+      setResumes(resumesList);
+
+      const rawCompanies = savedCompaniesRes.data;
+      const companiesList = Array.isArray(rawCompanies) ? rawCompanies : (rawCompanies?.saved_companies || []);
+      setSavedCompanies(companiesList);
+
+      const rawJobs = savedJobsRes.data;
+      const jobsList = Array.isArray(rawJobs) ? rawJobs : (rawJobs?.saved_jobs || []);
+      setSavedJobs(jobsList);
+
+      const rawApps = appsRes.data;
+      const appsList = Array.isArray(rawApps) ? rawApps : (rawApps?.applications || []);
+      setApplications(appsList);
     } catch (err) {
       console.error('Failed to load profile:', err);
     } finally {
@@ -222,7 +283,8 @@ export default function CareerProfile() {
     try {
       await companiesApi.toggleSave(slug);
       const res = await careerApi.listSavedCompanies();
-      setSavedCompanies(res.data || []);
+      const raw = res.data;
+      setSavedCompanies(Array.isArray(raw) ? raw : (raw?.saved_companies || []));
     } catch (err) {
       console.error('Failed to toggle save company:', err);
     }
@@ -232,7 +294,8 @@ export default function CareerProfile() {
     try {
       await careerApi.toggleSaveJob(jobId);
       const res = await careerApi.listSavedJobs();
-      setSavedJobs(res.data || []);
+      const raw = res.data;
+      setSavedJobs(Array.isArray(raw) ? raw : (raw?.saved_jobs || []));
     } catch (err) {
       console.error('Failed to toggle save job:', err);
     }
@@ -290,6 +353,12 @@ export default function CareerProfile() {
         headline,
         summary,
         skills,
+        avatar_type: avatarType,
+        avatar_id: activeAvatarId,
+        custom_avatar_url: customAvatarUrl || '',
+        avatar_type: avatarType,
+        avatar_id: activeAvatarId,
+        custom_avatar_url: customAvatarUrl || '',
         workplace_preference: workplace,
         employment_type_preference: employmentType,
         experience_level: experienceLevel,
@@ -309,31 +378,82 @@ export default function CareerProfile() {
     }
   };
 
-  const handleAvatarChange = (selected) => {
-    if (selected.type === 'custom' && selected.url) {
-      setCustomAvatarUrl(selected.url);
-      setActiveAvatarId('custom');
-      setMessage('Custom profile headshot updated.');
-    } else {
-      setActiveAvatarId(selected.id);
-      setCustomAvatarUrl(null);
-      setMessage(`Avatar updated to ${selected.name || 'preset'}.`);
+  const handleAvatarChange = async (selected) => {
+    const nextType = selected.avatarType || (selected.type === 'custom' || selected.type === 'uploaded' ? 'uploaded' : 'illustrated');
+    const nextId = selected.avatarId || selected.id || 'avatar-01';
+    const nextUrl = selected.customUrl !== undefined ? selected.customUrl : (selected.url || customAvatarUrl);
+
+    setAvatarType(nextType);
+    setActiveAvatarId(nextId);
+    if (nextUrl) setCustomAvatarUrl(nextUrl);
+
+    try {
+      localStorage.setItem('trusthire_user_avatar_type', nextType);
+      localStorage.setItem('trusthire_user_avatar_id', nextId);
+      if (nextUrl) localStorage.setItem('trusthire_user_custom_avatar', nextUrl);
+    } catch {
+      // ignore
+    }
+
+    try {
+      await careerApi.updateProfile({
+        avatar_type: nextType,
+        avatar_id: nextId,
+        custom_avatar_url: nextUrl || ''
+      });
+      setMessage(nextType === 'uploaded' ? 'Custom profile headshot updated.' : `Avatar persona updated to ${selected.name || 'new selection'}.`);
+    } catch (err) {
+      console.warn('Could not sync avatar change immediately:', err);
     }
     setTimeout(() => setMessage(''), 3000);
   };
 
   const primaryResume = resumes.find(r => r.is_primary) || resumes[0];
-  const currentPreset = DEFAULT_AVATARS.find(a => a.id === activeAvatarId) || DEFAULT_AVATARS[0];
-  const displayName = profile?.name || user?.user_metadata?.full_name || 'Alex Morgan';
+    const displayName = profile?.name || user?.user_metadata?.full_name || 'Alex Morgan';
   const displayUsername = user?.email ? user.email.split('@')[0] : 'candidate';
 
-  // Dynamic Career Activity Metrics (Apple Activity Rings)
-  const appliedCount = applications.length || 7;
-  const appliedTarget = 10;
-  const skillsCount = skills.length || 14;
-  const skillsTarget = 12;
-  const savedCount = (savedCompanies.length + savedJobs.length) || 8;
-  const savedTarget = 10;
+  // Real Authentic Candidate Career Activity Metrics (Apple Activity Rings)
+  const appliedCount = Array.isArray(applications) ? applications.length : 0;
+  const skillsCount = Array.isArray(skills) ? skills.length : 0;
+  const savedCount = (Array.isArray(savedCompanies) ? savedCompanies.length : 0) + 
+                     (Array.isArray(savedJobs) ? savedJobs.length : 0);
+
+  // Targets: user-defined goals, or dynamically calibrated baseline according to user profile
+  const appliedTarget = Number(goals?.appliedTarget) || 10;
+  const skillsTarget = Number(goals?.skillsTarget) || (skillsCount > 0 ? Math.max(15, Math.ceil((skillsCount + 1) / 5) * 5) : 15);
+  const savedTarget = Number(goals?.savedTarget) || 10;
+
+  const handleOpenGoalsModal = () => {
+    setGoalsForm({
+      appliedTarget,
+      skillsTarget,
+      savedTarget
+    });
+    setIsGoalsModalOpen(true);
+  };
+
+  const handleSaveGoals = async (e) => {
+    e?.preventDefault();
+    const updated = {
+      appliedTarget: Math.max(1, parseInt(goalsForm.appliedTarget, 10) || 10),
+      skillsTarget: Math.max(1, parseInt(goalsForm.skillsTarget, 10) || 15),
+      savedTarget: Math.max(1, parseInt(goalsForm.savedTarget, 10) || 10),
+      __type: 'activity_goals'
+    };
+    setGoals(updated);
+    try {
+      localStorage.setItem('trusthire_career_goals', JSON.stringify(updated));
+      const currentInterests = Array.isArray(profile?.career_interests) ? profile.career_interests : [];
+      const filtered = currentInterests.filter(i => !(i && (i.__type === 'activity_goals' || i.appliedTarget)));
+      filtered.push(updated);
+      await careerApi.updateProfile({ career_interests: filtered });
+      setMessage('Career activity targets updated successfully.');
+      setTimeout(() => setMessage(''), 3000);
+    } catch (err) {
+      console.warn('Could not sync goals to backend, cached locally:', err);
+    }
+    setIsGoalsModalOpen(false);
+  };
 
   const careerActivities = [
     {
@@ -404,12 +524,12 @@ export default function CareerProfile() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             
-            {/* Tabs */}
-            <nav className="flex items-center space-x-1 sm:space-x-2 overflow-x-auto no-scrollbar">
+            {/* Tabs with Bezel Container & Matched Spring Animation */}
+            <nav className="flex items-center gap-1 p-1 rounded-full bg-[#F0F0EE] border border-black/[0.04] overflow-x-auto no-scrollbar relative">
               {[
                 { id: 'overview', label: 'Overview', icon: BookOpen },
                 { id: 'resume', label: 'Resume', icon: FileText, badge: primaryResume ? 'Uploaded' : null },
-                { id: 'saved', label: 'Saved', icon: Star, badge: savedCompanies.length + savedJobs.length },
+                { id: 'saved', label: 'Saved', icon: Star, badge: (Array.isArray(savedCompanies) ? savedCompanies.length : 0) + (Array.isArray(savedJobs) ? savedJobs.length : 0) },
                 { id: 'preferences', label: 'Preferences', icon: Sliders },
                 { id: 'activity', label: 'Activity', icon: Activity },
               ].map((tab) => {
@@ -420,21 +540,35 @@ export default function CareerProfile() {
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer shrink-0 ${
+                    className={`relative inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 cursor-pointer shrink-0 select-none ${
                       isActive
-                        ? 'bg-[#f5f5f7] text-[#1d1d1f] font-semibold border border-black/[0.06] shadow-2xs'
-                        : 'text-[#6e6e73] hover:text-[#1d1d1f] hover:bg-black/[0.02]'
+                        ? 'text-white font-semibold'
+                        : 'text-[#6e6e73] hover:text-[#1d1d1f] hover:bg-black/[0.04]'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5 stroke-[1.75]" />
-                    <span>{tab.label}</span>
-                    {tab.badge !== null && tab.badge !== undefined && (
-                      <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${
-                        isActive ? 'bg-black/10 text-[#1d1d1f]' : 'bg-black/[0.05] text-[#86868b]'
-                      }`}>
-                        {tab.badge}
-                      </span>
+                    {isActive && (
+                      <motion.div
+                        layoutId="profile-subnav-active-pill"
+                        className="absolute inset-0 bg-[#121613] rounded-full shadow-2xs pointer-events-none"
+                        transition={{
+                          type: 'spring',
+                          stiffness: 420,
+                          damping: 38,
+                          mass: 0.85,
+                        }}
+                      />
                     )}
+                    <span className="relative z-10 flex items-center gap-1.5">
+                      <Icon className="w-3.5 h-3.5 stroke-[2]" />
+                      <span>{tab.label}</span>
+                      {tab.badge !== null && tab.badge !== undefined && (
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-semibold ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-black/[0.06] text-[#86868b]'
+                        }`}>
+                          {tab.badge}
+                        </span>
+                      )}
+                    </span>
                   </button>
                 );
               })}
@@ -513,29 +647,29 @@ export default function CareerProfile() {
             {/* Identity Card */}
             <div className="bg-white rounded-3xl p-6 border border-black/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-5">
               
-              {/* Large GitHub-Style Avatar with Apple Edit Pill */}
-              <div className="relative group w-48 h-48 sm:w-56 sm:h-56 mx-auto rounded-full overflow-hidden border border-black/10 bg-[#f5f5f7] shadow-sm flex items-center justify-center">
-                {customAvatarUrl ? (
-                  <img
-                    src={customAvatarUrl}
-                    alt={displayName}
-                    className="w-full h-full object-cover"
+              {/* Large Profile Avatar with Floating Camera Badge */}
+              <div className="relative w-48 h-48 sm:w-56 sm:h-56 mx-auto">
+                <div className="w-full h-full rounded-full overflow-hidden border border-black/10 bg-white shadow-sm flex items-center justify-center">
+                  <UserAvatar
+                    avatarType={avatarType}
+                    avatarId={activeAvatarId}
+                    customUrl={customAvatarUrl}
+                    name={displayName}
+                    size="full"
+                    className="w-full h-full border-0"
+                    imgClassName="w-full h-full object-cover object-center"
                   />
-                ) : (
-                  <div className="w-full h-full">
-                    {currentPreset.svg}
-                  </div>
-                )}
+                </div>
 
-                {/* Edit Photo Overlay Pill */}
+                {/* Floating Camera Button (Aligned at bottom-right of bubble) */}
                 <button
                   type="button"
                   onClick={() => setShowAvatarCustomizer(!showAvatarCustomizer)}
-                  className="absolute bottom-3 inset-x-8 py-2 rounded-full bg-white/90 hover:bg-white text-[#1d1d1f] text-xs font-medium shadow-md border border-black/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer backdrop-blur-md opacity-90 group-hover:opacity-100"
-                  title="Change Avatar or Photo"
+                  className="absolute bottom-2 right-2 w-11 h-11 rounded-full bg-white hover:bg-[#f5f5f7] active:scale-95 text-[#1d1d1f] shadow-md border border-black/10 transition-all flex items-center justify-center cursor-pointer"
+                  title={showAvatarCustomizer ? "Close Avatar Gallery" : "Change Avatar or Photo"}
+                  aria-label={showAvatarCustomizer ? "Close Avatar Gallery" : "Change Avatar or Photo"}
                 >
-                  <Camera className="w-3.5 h-3.5 text-[#515154]" />
-                  <span>{showAvatarCustomizer ? 'Close Picker' : 'Change Avatar'}</span>
+                  <Camera className="w-5 h-5 text-[#1d1d1f] stroke-[2]" />
                 </button>
               </div>
 
@@ -549,16 +683,23 @@ export default function CareerProfile() {
 
                 <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-[#86868b]">
                   <span>@{displayUsername}</span>
-                  <span>•</span>
-                  <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    {profile?.is_confirmed ? 'Active' : 'Draft Profile'}
-                  </span>
                 </div>
 
                 <p className="text-xs text-[#515154] leading-relaxed pt-2">
                   {headline || 'Senior Software Engineer'}
                 </p>
+
+                {/* Toggle Avatar Gallery Button */}
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAvatarCustomizer(!showAvatarCustomizer)}
+                    className="w-full py-2.5 px-4 rounded-xl bg-[#f5f5f7] hover:bg-[#ebebee] active:scale-[0.99] text-[#1d1d1f] text-xs font-medium border border-black/[0.06] transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    <Camera className="w-4 h-4 text-[#515154] stroke-[2]" />
+                    <span>{showAvatarCustomizer ? 'Close Avatar Gallery' : 'Change Avatar Persona'}</span>
+                  </button>
+                </div>
               </div>
 
               {/* Edit Profile Quick Action Button */}
@@ -605,7 +746,7 @@ export default function CareerProfile() {
                 <div className="flex items-center gap-3">
                   <Star className="w-4 h-4 text-[#86868b] shrink-0" />
                   <span>
-                    {savedCompanies.length} Companies • {savedJobs.length} Jobs saved
+                    {(Array.isArray(savedCompanies) ? savedCompanies.length : 0)} Companies • {(Array.isArray(savedJobs) ? savedJobs.length : 0)} Jobs saved
                   </span>
                 </div>
 
@@ -618,9 +759,14 @@ export default function CareerProfile() {
                     <Activity className="w-3.5 h-3.5 text-[#FF2D55]" />
                     Career Activity Rings
                   </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/[0.04] text-[#1d1d1f] border border-black/[0.04]">
-                    Goals
-                  </span>
+                  <button
+                    type="button"
+                    onClick={handleOpenGoalsModal}
+                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-black/[0.04] hover:bg-black/[0.08] text-[#1d1d1f] border border-black/[0.04] transition-colors cursor-pointer"
+                    title="Configure career targets"
+                  >
+                    Goals • Set
+                  </button>
                 </div>
 
                 <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#f5f5f7] border border-black/[0.04]">
@@ -658,13 +804,22 @@ export default function CareerProfile() {
 
             </div>
 
-            {/* AVATAR PICKER DRAWER / CARD (Kokonut UI) */}
+            {/* AVATAR GALLERY & PHOTO SELECTOR */}
             {showAvatarCustomizer && (
-              <AvatarPicker
-                value={customAvatarUrl || activeAvatarId}
+              <IllustratedAvatarGallery
+                avatarType={avatarType}
+                avatarId={activeAvatarId}
+                customUrl={customAvatarUrl}
                 onChange={handleAvatarChange}
+                onSave={async (val) => {
+                  await careerApi.updateProfile({
+                    avatar_type: val.avatarType,
+                    avatar_id: val.avatarId,
+                    custom_avatar_url: val.customUrl || ''
+                  });
+                }}
                 userName={displayName}
-                userRole={headline || 'Candidate'}
+                userHeadline={headline}
                 className="border-black/[0.08] shadow-sm"
               />
             )}
@@ -680,24 +835,23 @@ export default function CareerProfile() {
             {(activeTab === 'overview' || activeTab === 'resume') && (
               <section className="bg-white rounded-3xl p-6 sm:p-7 border border-black/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-black/[0.06]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#0071e3] flex items-center justify-center">
-                      <FileText className="w-4 h-4 stroke-[2]" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#f5f5f7] border border-black/[0.05] text-[#1d1d1f] flex items-center justify-center shrink-0 shadow-2xs">
+                      <FileText className="w-5 h-5 stroke-[2] text-[#1d1d1f]" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-[#1d1d1f] tracking-tight">
+                      <h2 className="text-base font-semibold text-[#1d1d1f] tracking-tight">
                         Primary Resume & Credentials
                       </h2>
-                      <p className="text-[11px] text-[#86868b]">
-                        Processed automatically to generate career intelligence and skill matches.
+                      <p className="text-xs text-[#86868b]">
+                        Uploaded resume and documents.
                       </p>
                     </div>
                   </div>
 
                   {primaryResume && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/80">
-                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Active</span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#f5f5f7] text-[#1d1d1f] border border-black/[0.06]">
+                      <span>Uploaded</span>
                     </span>
                   )}
                 </div>
@@ -774,16 +928,16 @@ export default function CareerProfile() {
             {(activeTab === 'overview' || activeTab === 'preferences') && (
               <section className="bg-white rounded-3xl p-6 sm:p-7 border border-black/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-black/[0.06]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
-                      <Layers className="w-4 h-4 stroke-[2]" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#f5f5f7] border border-black/[0.05] text-[#1d1d1f] flex items-center justify-center shrink-0 shadow-2xs">
+                      <Layers className="w-5 h-5 stroke-[2] text-[#1d1d1f]" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-[#1d1d1f] tracking-tight">
+                      <h2 className="text-base font-semibold text-[#1d1d1f] tracking-tight">
                         Skills & Technologies ({skills.length})
                       </h2>
-                      <p className="text-[11px] text-[#86868b]">
-                        Verified tools and competencies extracted from your resume.
+                      <p className="text-xs text-[#86868b]">
+                        Skills added to your profile.
                       </p>
                     </div>
                   </div>
@@ -840,16 +994,16 @@ export default function CareerProfile() {
             {(activeTab === 'overview' || activeTab === 'preferences') && (
               <section className="bg-white rounded-3xl p-6 sm:p-7 border border-black/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-black/[0.06]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
-                      <User className="w-4 h-4 stroke-[2]" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#f5f5f7] border border-black/[0.05] text-[#1d1d1f] flex items-center justify-center shrink-0 shadow-2xs">
+                      <User className="w-5 h-5 stroke-[2] text-[#1d1d1f]" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-[#1d1d1f] tracking-tight">
+                      <h2 className="text-base font-semibold text-[#1d1d1f] tracking-tight">
                         Identity & Biography
                       </h2>
-                      <p className="text-[11px] text-[#86868b]">
-                        Headline and profile summary visible to prospective employers.
+                      <p className="text-xs text-[#86868b]">
+                        Headline and brief summary.
                       </p>
                     </div>
                   </div>
@@ -889,16 +1043,16 @@ export default function CareerProfile() {
             {(activeTab === 'overview' || activeTab === 'preferences') && (
               <section className="bg-white rounded-3xl p-6 sm:p-7 border border-black/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-6">
                 <div className="flex items-center justify-between pb-3 border-b border-black/[0.06]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-600 flex items-center justify-center">
-                      <Sliders className="w-4 h-4 stroke-[2]" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#f5f5f7] border border-black/[0.05] text-[#1d1d1f] flex items-center justify-center shrink-0 shadow-2xs">
+                      <Sliders className="w-5 h-5 stroke-[2] text-[#1d1d1f]" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-[#1d1d1f] tracking-tight">
-                        Work Preferences & Career Goals
+                      <h2 className="text-base font-semibold text-[#1d1d1f] tracking-tight">
+                        Work Preferences
                       </h2>
-                      <p className="text-[11px] text-[#86868b]">
-                        Configure role titles, preferred locations, and target workplace models.
+                      <p className="text-xs text-[#86868b]">
+                        Target roles, locations, and workplace models.
                       </p>
                     </div>
                   </div>
@@ -967,16 +1121,16 @@ export default function CareerProfile() {
             {(activeTab === 'overview' || activeTab === 'saved') && (
               <section className="bg-white rounded-3xl p-6 sm:p-7 border border-black/[0.08] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/[0.06]">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center">
-                      <Star className="w-4 h-4 stroke-[2]" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#f5f5f7] border border-black/[0.05] text-[#1d1d1f] flex items-center justify-center shrink-0 shadow-2xs">
+                      <Star className="w-5 h-5 stroke-[2] text-[#1d1d1f]" />
                     </div>
                     <div>
-                      <h2 className="text-sm font-semibold text-[#1d1d1f] tracking-tight">
-                        Saved Opportunities ({savedCompanies.length + savedJobs.length})
+                      <h2 className="text-base font-semibold text-[#1d1d1f] tracking-tight">
+                        Saved Opportunities ({(Array.isArray(savedCompanies) ? savedCompanies.length : 0) + (Array.isArray(savedJobs) ? savedJobs.length : 0)})
                       </h2>
-                      <p className="text-[11px] text-[#86868b]">
-                        Bookmarked companies and positions saved to your personal collections.
+                      <p className="text-xs text-[#86868b]">
+                        Bookmarked companies and positions.
                       </p>
                     </div>
                   </div>
@@ -992,7 +1146,7 @@ export default function CareerProfile() {
                           : 'text-[#86868b] hover:text-[#1d1d1f]'
                       }`}
                     >
-                      Companies ({savedCompanies.length})
+                      Companies ({Array.isArray(savedCompanies) ? savedCompanies.length : 0})
                     </button>
                     <button
                       type="button"
@@ -1003,7 +1157,7 @@ export default function CareerProfile() {
                           : 'text-[#86868b] hover:text-[#1d1d1f]'
                       }`}
                     >
-                      Jobs ({savedJobs.length})
+                      Jobs ({Array.isArray(savedJobs) ? savedJobs.length : 0})
                     </button>
                   </div>
                 </div>
@@ -1089,6 +1243,7 @@ export default function CareerProfile() {
                   subtitle="Concentric activity rings tracking applied jobs, verified skills, and saved opportunities."
                   badge="Career Goals"
                   activities={careerActivities}
+                  onEditGoals={handleOpenGoalsModal}
                 />
               </section>
             )}
@@ -1097,8 +1252,8 @@ export default function CareerProfile() {
             <section className="pt-2">
               <div className="bg-white rounded-2xl p-5 border border-black/[0.06] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div className="flex items-center gap-3.5">
-                  <div className="w-8 h-8 rounded-full bg-rose-50 text-rose-500 flex items-center justify-center shrink-0">
-                    <Trash2 className="w-4 h-4 stroke-[1.75]" />
+                  <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Trash2 className="w-5 h-5 stroke-[2]" />
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-[#1d1d1f] tracking-tight">
@@ -1130,6 +1285,118 @@ export default function CareerProfile() {
 
       </div>
 
+      {/* Career Goals Configuration Modal (Apple-Styled) */}
+      {isGoalsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.15)] space-y-6">
+            <div className="flex items-center justify-between pb-3 border-b border-black/[0.06]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#FF2D55]/10 text-[#FF2D55] flex items-center justify-center">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-[#1d1d1f] tracking-tight">Set Career Goals</h3>
+                  <p className="text-[11px] text-[#86868b]">Personalize your concentric activity ring targets</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsGoalsModalOpen(false)}
+                className="p-1 rounded-full text-[#86868b] hover:text-[#1d1d1f] hover:bg-black/[0.05] transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGoals} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="flex items-center justify-between text-xs font-medium text-[#1d1d1f]">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FF2D55]" />
+                    <span>Applied Roles Goal</span>
+                  </span>
+                  <span className="text-[11px] text-[#86868b]">Current: {appliedCount}</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={goalsForm.appliedTarget}
+                    onChange={(e) => setGoalsForm(prev => ({ ...prev, appliedTarget: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.1] bg-[#fbfbfd] text-xs text-[#1d1d1f] focus:outline-none focus:ring-2 focus:ring-[#FF2D55]/30 focus:border-[#FF2D55]"
+                    placeholder="e.g. 10"
+                    required
+                  />
+                  <span className="absolute right-3.5 top-2.5 text-[11px] text-[#86868b] pointer-events-none">ROLES</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center justify-between text-xs font-medium text-[#1d1d1f]">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#A3F900]" />
+                    <span>Skills Competency Goal</span>
+                  </span>
+                  <span className="text-[11px] text-[#86868b]">Current: {skillsCount}</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={goalsForm.skillsTarget}
+                    onChange={(e) => setGoalsForm(prev => ({ ...prev, skillsTarget: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.1] bg-[#fbfbfd] text-xs text-[#1d1d1f] focus:outline-none focus:ring-2 focus:ring-[#A3F900]/40 focus:border-[#A3F900]"
+                    placeholder="e.g. 25"
+                    required
+                  />
+                  <span className="absolute right-3.5 top-2.5 text-[11px] text-[#86868b] pointer-events-none">SKILLS</span>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="flex items-center justify-between text-xs font-medium text-[#1d1d1f]">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#04C7DD]" />
+                    <span>Saved Opportunities Goal</span>
+                  </span>
+                  <span className="text-[11px] text-[#86868b]">Current: {savedCount}</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={goalsForm.savedTarget}
+                    onChange={(e) => setGoalsForm(prev => ({ ...prev, savedTarget: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-black/[0.1] bg-[#fbfbfd] text-xs text-[#1d1d1f] focus:outline-none focus:ring-2 focus:ring-[#04C7DD]/30 focus:border-[#04C7DD]"
+                    placeholder="e.g. 10"
+                    required
+                  />
+                  <span className="absolute right-3.5 top-2.5 text-[11px] text-[#86868b] pointer-events-none">ROLES</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-black/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setIsGoalsModalOpen(false)}
+                  className="px-4 py-2 rounded-full text-xs font-medium text-[#1d1d1f] bg-black/[0.04] hover:bg-black/[0.08] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-full text-xs font-medium text-white bg-[#0071e3] hover:bg-[#0077ed] transition-colors shadow-sm cursor-pointer"
+                >
+                  Save Targets
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

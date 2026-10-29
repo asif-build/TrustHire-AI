@@ -37,7 +37,7 @@ export default function TrustHireFAQ() {
 
   return (
     <section 
-      className="relative z-20 py-20 sm:py-28 lg:py-32 bg-[#F7F4ED] text-[#24211E] border-t border-[#EAE3D6]"
+      className="relative z-20 py-20 sm:py-28 lg:py-32 bg-white text-zinc-900 border-t border-zinc-100"
       aria-label="Frequently Asked Questions"
     >
       <div className="max-w-[1440px] mx-auto px-6 sm:px-10 lg:px-16">
@@ -51,12 +51,12 @@ export default function TrustHireFAQ() {
           <div className="lg:col-span-7 flex flex-col">
             
             {/* Editorial Serif Display Heading matching Sunset */}
-            <h2 className="font-editorial-serif text-[clamp(2.35rem,4.5vw,3.75rem)] font-normal leading-[1.12] tracking-[-0.025em] text-[#24211E] mb-10 sm:mb-12">
+            <h2 className="font-editorial-serif text-[clamp(2.35rem,4.5vw,3.75rem)] font-normal leading-[1.12] tracking-[-0.025em] text-zinc-900 mb-10 sm:mb-12">
               Frequently asked questions
             </h2>
 
             {/* Accordion List */}
-            <div className="divide-y divide-[#E3DACD] border-t border-b border-[#E3DACD]">
+            <div className="divide-y divide-zinc-200 border-t border-b border-zinc-200">
               {faqs.map((faq, idx) => {
                 const isOpen = openIndex === idx;
 
@@ -69,12 +69,12 @@ export default function TrustHireFAQ() {
                       aria-expanded={isOpen}
                     >
                       {/* Question Text */}
-                      <span className="font-editorial-serif text-lg sm:text-[21px] font-normal text-[#24211E] group-hover:text-[#A84E33] transition-colors leading-snug">
+                      <span className="font-editorial-serif text-lg sm:text-[21px] font-normal text-zinc-900 group-hover:text-[#A84E33] transition-colors leading-snug">
                         {faq.q}
                       </span>
 
                       {/* Clean Minimal Plus Icon that smoothly rotates to an X */}
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[#24211E] shrink-0 transition-transform duration-300">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-zinc-700 shrink-0 transition-transform duration-300">
                         <Plus 
                           size={19} 
                           strokeWidth={1.8} 
@@ -89,7 +89,7 @@ export default function TrustHireFAQ() {
                         isOpen ? 'max-h-96 pb-6 opacity-100' : 'max-h-0 pb-0 opacity-0'
                       }`}
                     >
-                      <p className="text-sm sm:text-[15px] text-[#625E58] font-normal leading-relaxed pr-6 max-w-xl">
+                      <p className="text-sm sm:text-[15px] text-zinc-600 font-normal leading-relaxed pr-6 max-w-xl">
                         {faq.a}
                       </p>
                     </div>
@@ -104,22 +104,22 @@ export default function TrustHireFAQ() {
           {/* RIGHT COLUMN: Editorial Candid Photograph               */}
           {/* ======================================================== */}
           <div className="lg:col-span-5 relative mt-4 lg:mt-2">
-            <div className="overflow-hidden rounded-[28px] sm:rounded-[34px] border border-[#E8DFD3] shadow-[0_16px_50px_rgba(36,33,30,0.06)] bg-[#EDE6DC] aspect-[4/3] sm:aspect-[1/1] lg:aspect-[1/1.12]">
+            <div className="overflow-hidden rounded-[28px] sm:rounded-[34px] border border-black/[0.08] shadow-[0_20px_50px_rgba(0,0,0,0.08)] bg-zinc-100 aspect-[4/3] sm:aspect-[1/1] lg:aspect-[1/1]">
               <img
                 src="/images/trusthire-faq.webp"
-                alt="Candidate reviewing career documents in a warm setting"
+                alt="Elon Musk holding X.com card with PayPal computer"
                 loading="lazy"
-                width={1200}
-                height={1350}
+                width={735}
+                height={720}
                 className="w-full h-full object-cover object-center transition-transform duration-700 ease-out hover:scale-[1.025]"
               />
             </div>
 
             {/* Subtle ambient light gradient */}
             <div 
-              className="absolute -inset-4 -z-10 rounded-[38px] opacity-40 blur-xl pointer-events-none"
+              className="absolute -inset-4 -z-10 rounded-[38px] opacity-30 blur-xl pointer-events-none"
               style={{
-                background: 'radial-gradient(circle, rgba(168,78,51,0.08) 0%, transparent 70%)'
+                background: 'radial-gradient(circle, rgba(0,0,0,0.06) 0%, transparent 70%)'
               }}
             />
           </div>

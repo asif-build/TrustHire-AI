@@ -124,27 +124,22 @@ export default function ApplicationTrackerPage() {
       <TrustHireNavbar />
 
       {/* Header Bar */}
-      <section className="bg-white border-b border-black/5 py-10 sm:py-12 px-4 sm:px-6 lg:px-8">
+      <section className="bg-white border-b border-black/5 py-8 sm:py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F4F4F0] border border-black/5 text-xs font-mono text-gray-700 mb-3">
-              <Briefcase size={13} className="text-gray-800" />
-              <span>User-Managed Application Kanban</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-950">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-950">
               Application Tracker
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-gray-600 max-w-2xl leading-relaxed">
-              Organize your job search pipeline across application stages.
-              Maintain traceable logs of submissions, interview dates, and custom notes.
+            <p className="mt-1.5 text-xs sm:text-sm text-gray-600 max-w-2xl leading-relaxed">
+              Track your job pipeline across application stages, interviews, and offers.
             </p>
           </div>
 
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#F0442D] hover:bg-[#d63823] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-xs self-start sm:self-center"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#121613] hover:bg-black text-white text-xs font-semibold transition-colors shadow-2xs self-start sm:self-center"
           >
-            <Plus size={16} />
+            <Plus size={15} />
             <span>Track Application</span>
           </button>
         </div>
@@ -152,16 +147,6 @@ export default function ApplicationTrackerPage() {
 
       {/* Main Kanban Content */}
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
-        
-        {/* Anti-Hallucination Transparency Notice */}
-        <div className="mb-6 p-4 rounded-2xl bg-[#F4F4F0] border border-black/5 text-xs text-gray-600 flex items-start gap-3">
-          <ShieldCheck size={18} className="text-emerald-700 shrink-0 mt-0.5" />
-          <div>
-            <span className="font-semibold text-gray-900">Application Status Integrity: </span>
-            Application statuses are candidate-managed records. TrustHire does not read internal employer ATS pipelines without explicit employer integration.
-            Clicking an apply link does not automatically record an application as submitted.
-          </div>
-        </div>
 
         {loading ? (
           <div className="py-24 text-center">

@@ -1978,3 +1978,71 @@ class CareerProfileAndCompanyIntelligenceTest(TestCase):
 
         self.assertIn('action_label', data['next_step'])
 
+
+
+class IllustratedAvatarPersistenceTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email='avatar_candidate@example.com',
+            password='Password123!',
+            role='candidate',
+            full_name='Test Candidate'
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def test_all_nine_illustrated_avatars_can_be_selected_and_persisted(self):
+        for i in range(1, 10):
+            avatar_id = f'avatar-0{i}'
+            res = self.client.put('/api/career/profile', {
+                'avatar_type': 'illustrated',
+                'avatar_id': avatar_id
+            }, format='json')
+            self.assertEqual(res.status_code, status.HTTP_200_OK, f"Failed on {avatar_id}")
+            self.assertEqual(res.data['avatar_type'], 'illustrated')
+            self.assertEqual(res.data['avatar_id'], avatar_id)
+
+            # Verify persisted in database
+            self.user.career_profile.refresh_from_db()
+            self.assertEqual(self.user.career_profile.avatar_id, avatar_id)
+            self.assertEqual(self.user.career_profile.avatar_type, 'illustrated')
+
+    def test_arbitrary_unapproved_avatar_id_is_rejected(self):
+        res = self.client.put('/api/career/profile', {
+            'avatar_type': 'illustrated',
+            'avatar_id': 'malicious-injected-avatar-999'
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('avatar_id', res.data)
+
+    def test_switching_between_uploaded_and_illustrated_preserves_custom_photo(self):
+        custom_data_url = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+        
+        # 1. Upload custom photo
+        res1 = self.client.put('/api/career/profile', {
+            'avatar_type': 'uploaded',
+            'avatar_id': 'avatar-01',
+            'custom_avatar_url': custom_data_url
+        }, format='json')
+        self.assertEqual(res1.status_code, status.HTTP_200_OK)
+        self.assertEqual(res1.data['avatar_type'], 'uploaded')
+        self.assertEqual(res1.data['custom_avatar_url'], custom_data_url)
+
+        # 2. Select illustrated persona #5 (yellow cap)
+        res2 = self.client.put('/api/career/profile', {
+            'avatar_type': 'illustrated',
+            'avatar_id': 'avatar-05'
+        }, format='json')
+        self.assertEqual(res2.status_code, status.HTTP_200_OK)
+        self.assertEqual(res2.data['avatar_type'], 'illustrated')
+        self.assertEqual(res2.data['avatar_id'], 'avatar-05')
+        # Photo is not destroyed
+        self.assertEqual(res2.data['custom_avatar_url'], custom_data_url)
+
+        # 3. Switch back to uploaded photo
+        res3 = self.client.put('/api/career/profile', {
+            'avatar_type': 'uploaded'
+        }, format='json')
+        self.assertEqual(res3.status_code, status.HTTP_200_OK)
+        self.assertEqual(res3.data['avatar_type'], 'uploaded')
+        self.assertEqual(res3.data['custom_avatar_url'], custom_data_url)

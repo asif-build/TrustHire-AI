@@ -1,4 +1,4 @@
-import { Check, Plus } from "lucide-react";
+import { Bookmark, Check, Plus } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   type FormEvent,
@@ -70,7 +70,7 @@ const returnFocus = (root: HTMLElement | null, button: HTMLElement | null) => {
   }
 };
 
-/** A bookmark whose ink drops in from the top like a ribbon when saved. */
+/** A bookmark icon with subtle spring bounce and responsive fill state. */
 function Ribbon({
   saved,
   reduceMotion,
@@ -78,45 +78,23 @@ function Ribbon({
   saved: boolean;
   reduceMotion: boolean;
 }) {
-  const clip = useId();
-  let ribbonTransition: object = { duration: 0.18, ease: EASE_OUT };
-  if (reduceMotion) {
-    ribbonTransition = { duration: 0 };
-  } else if (saved) {
-    ribbonTransition = { type: "spring", stiffness: 520, damping: 24 };
-  }
   return (
-    <svg
-      aria-hidden
-      className="size-4 overflow-visible"
-      fill="none"
-      viewBox="0 0 16 16"
+    <motion.span
+      animate={{ scale: saved ? [1, 1.25, 1] : 1 }}
+      transition={reduceMotion ? { duration: 0 } : { duration: 0.25, ease: "easeOut" }}
+      className="inline-flex items-center justify-center shrink-0"
     >
-      <title>Bookmark</title>
-      <defs>
-        <clipPath id={clip}>
-          <path d="M3.5 2.5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v11.2l-4.5-3-4.5 3z" />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#${clip})`}>
-        <motion.rect
-          animate={{ y: saved ? 0 : -16 }}
-          className="fill-current"
-          height="16"
-          initial={false}
-          transition={ribbonTransition}
-          width="16"
-          x="0"
-          y="0"
-        />
-      </g>
-      <path
-        className="stroke-current"
-        d="M3.5 2.5a1 1 0 0 1 1-1h7a1 1 0 0 1 1 1v11.2l-4.5-3-4.5 3z"
-        strokeLinejoin="round"
-        strokeWidth="1.5"
+      <Bookmark
+        size={14}
+        className={cn(
+          "shrink-0 transition-colors duration-200",
+          saved
+            ? "fill-current text-rose-600 dark:text-rose-400"
+            : "text-[#6E6E66] group-hover:text-[#121613] dark:text-zinc-400"
+        )}
+        strokeWidth={2}
       />
-    </svg>
+    </motion.span>
   );
 }
 
@@ -287,12 +265,12 @@ export function SaveButton({
       <button
         aria-pressed={saved}
         className={cn(
-          "inline-flex h-9 sm:h-10 items-center gap-2 rounded-full border pr-4 pl-3.5 font-medium text-xs sm:text-sm outline-none cursor-pointer",
-          "transition-colors duration-150 ease-out",
-          "focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950",
+          "group inline-flex h-8 sm:h-8.5 items-center gap-1.5 rounded-full border px-3 font-medium text-xs outline-none cursor-pointer",
+          "transition-all duration-150 ease-out",
+          "focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-1",
           saved
-            ? "border-zinc-900 bg-zinc-900 text-white hover:bg-zinc-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-            : "border-zinc-200 bg-white text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-900 shadow-2xs"
+            ? "border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-400"
+            : "border-[#E5E5E0] bg-white text-[#6E6E66] hover:text-[#121613] hover:border-[#121613] dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-300 dark:hover:bg-zinc-900 shadow-xs"
         )}
         onClick={toggle}
         ref={buttonRef}

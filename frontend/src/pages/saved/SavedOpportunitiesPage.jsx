@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Link, useSearchParams } from 'react-router-dom';
 import TrustHireNavbar from '../../components/common/TrustHireNavbar';
 import CompanyLogo from '../../components/common/CompanyLogo';
 import { careerApi, companiesApi } from '../../services/api';
@@ -11,7 +12,9 @@ import {
 
 export default function SavedOpportunitiesPage() {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('jobs'); // 'jobs' | 'companies'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'companies' ? 'companies' : 'jobs';
+  const [activeTab, setActiveTab] = useState(initialTab); // 'jobs' | 'companies'
   const [savedJobs, setSavedJobs] = useState([]);
   const [savedCompanies, setSavedCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,8 +32,19 @@ export default function SavedOpportunitiesPage() {
         careerApi.listSavedJobs().catch(() => ({ data: { saved_jobs: [] } })),
         careerApi.listSavedCompanies().catch(() => ({ data: { saved_companies: [] } }))
       ]);
-      setSavedJobs(jobsRes.data.saved_jobs || []);
-      setSavedCompanies(compsRes.data.saved_companies || []);
+
+      const rawJobs = jobsRes.data;
+      const jobsList = Array.isArray(rawJobs) ? rawJobs : (rawJobs?.saved_jobs || []);
+      const rawComps = compsRes.data;
+      const compsList = Array.isArray(rawComps) ? rawComps : (rawComps?.saved_companies || []);
+
+      setSavedJobs(jobsList);
+      setSavedCompanies(compsList);
+
+      // If user came without explicit tab param, and has saved companies but no saved jobs, show companies tab
+      if (!searchParams.get('tab') && jobsList.length === 0 && compsList.length > 0) {
+        setActiveTab('companies');
+      }
     } catch {
       setError('Unable to load saved opportunities.');
     } finally {
@@ -76,28 +90,39 @@ export default function SavedOpportunitiesPage() {
             </p>
           </div>
 
-          {/* Tab Switcher */}
-          <div className="flex p-1 bg-gray-100 rounded-2xl self-start sm:self-center">
-            <button
-              onClick={() => setActiveTab('jobs')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                activeTab === 'jobs'
-                  ? 'bg-white text-gray-950 shadow-xs'
-                  : 'text-gray-600 hover:text-black'
-              }`}
-            >
-              Saved Jobs ({savedJobs.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('companies')}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-                activeTab === 'companies'
-                  ? 'bg-white text-gray-950 shadow-xs'
-                  : 'text-gray-600 hover:text-black'
-              }`}
-            >
-              Saved Employers ({savedCompanies.length})
-            </button>
+          {/* Tab Switcher with Bezel Container & Matched Spring Animation */}
+          <div className="flex p-1 bg-[#F0F0EE] border border-black/[0.04] rounded-full self-start sm:self-center relative">
+            {[
+              { id: 'jobs', label: `Saved Jobs (${savedJobs.length})` },
+              { id: 'companies', label: `Saved Employers (${savedCompanies.length})` },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setActiveTab(tab.id); setSearchParams({ tab: tab.id }); }}
+                  className={`relative px-4 py-1.5 rounded-full text-xs font-medium transition-colors duration-150 cursor-pointer select-none ${
+                    isActive
+                      ? 'text-white font-semibold'
+                      : 'text-[#6e6e73] hover:text-[#1d1d1f] hover:bg-black/[0.04]'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="saved-opportunities-active-pill"
+                      className="absolute inset-0 bg-[#121613] rounded-full shadow-2xs pointer-events-none"
+                      transition={{
+                        type: 'spring',
+                        stiffness: 420,
+                        damping: 38,
+                        mass: 0.85,
+                      }}
+                    />
+                  )}
+                  <span className="relative z-10">{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>

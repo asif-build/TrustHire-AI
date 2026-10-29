@@ -55,6 +55,18 @@ class CareerProfile(models.Model):
     salary_preference_max = models.FloatField(null=True, blank=True)
     salary_currency = models.CharField(max_length=10, default='USD')
     
+    # Avatar & Identity Persona
+    avatar_type = models.CharField(
+        max_length=20,
+        choices=(
+            ('illustrated', 'Illustrated'),
+            ('uploaded', 'Uploaded'),
+        ),
+        default='illustrated'
+    )
+    avatar_id = models.CharField(max_length=50, default='avatar-01', blank=True)
+    custom_avatar_url = models.TextField(blank=True, default='')
+
     # Authoritative Confirmation flag
     is_confirmed = models.BooleanField(default=False)
     

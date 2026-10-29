@@ -28,13 +28,13 @@ export default function ResourceCard({
   const getPricingBadge = () => {
     switch (resource.pricing_classification) {
       case 'free':
-        return { label: '100% Free', color: 'bg-emerald-50 text-emerald-800 border-emerald-200' };
+        return { label: 'Free', color: 'bg-[#F4F4F0] text-[#52524E] border-black/5' };
       case 'free_with_paid_cert':
-        return { label: 'Free Course (Optional Cert)', color: 'bg-blue-50 text-blue-800 border-blue-200' };
+        return { label: 'Free Course', color: 'bg-[#F4F4F0] text-[#52524E] border-black/5' };
       case 'paid':
-        return { label: 'Paid Platform', color: 'bg-amber-50 text-amber-800 border-amber-200' };
+        return { label: 'Paid', color: 'bg-[#F4F4F0] text-[#52524E] border-black/5' };
       default:
-        return { label: 'Free Access', color: 'bg-[#F4F4F0] text-[#6E6E66] border-[#EAEAE5]' };
+        return { label: 'Free Access', color: 'bg-[#F4F4F0] text-[#52524E] border-black/5' };
     }
   };
 
@@ -48,14 +48,14 @@ export default function ResourceCard({
         {/* Top Badges & Bookmark */}
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-            <span className="text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded bg-[#F4F4F0] text-[#121613]">
+            <span className="text-[10px] font-mono font-medium uppercase px-2 py-0.5 rounded bg-[#F4F4F0] text-[#121613] border border-black/5">
               {resource.provider}
             </span>
             <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${pricing.color}`}>
               {pricing.label}
             </span>
             {resource.is_official_documentation && (
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#F4F4F0] text-[#52524E] border border-black/5">
                 Official Docs
               </span>
             )}
@@ -66,7 +66,7 @@ export default function ResourceCard({
             onClick={() => onToggleSave && onToggleSave(resource.id)}
             className={`p-1.5 rounded-lg border transition-colors shrink-0 cursor-pointer ${
               resource.is_saved
-                ? 'bg-rose-50 border-rose-200 text-rose-600'
+                ? 'bg-[#121613] border-[#121613] text-white'
                 : 'bg-white border-[#EAEAE5] hover:border-[#121613] text-[#9A9A92] hover:text-[#121613]'
             }`}
             title={resource.is_saved ? 'Remove from saved' : 'Save resource'}
@@ -141,10 +141,7 @@ export default function ResourceCard({
             <div className="flex items-center justify-between text-[11px] font-mono text-[#6E6E66] mb-1">
               <span className="flex items-center gap-1">
                 {isCompleted ? (
-                  <>
-                    <CheckCircle2 size={12} className="text-emerald-600" />
-                    <span className="text-emerald-700 font-medium">Completed</span>
-                  </>
+                  <span className="text-[#121613] font-medium">Completed</span>
                 ) : (
                   <span>In Progress</span>
                 )}
@@ -153,7 +150,7 @@ export default function ResourceCard({
             </div>
             <div className="w-full h-1 bg-[#EAEAE5] rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full ${isCompleted ? 'bg-emerald-600' : 'bg-[#121613]'}`}
+                className="h-full rounded-full bg-[#121613]"
                 style={{ width: `${percent}%` }}
               />
             </div>

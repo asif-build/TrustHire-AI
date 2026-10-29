@@ -18,6 +18,7 @@ import {
   useReducedMotion,
 } from "framer-motion";
 import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
+import { SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ActivityData {
@@ -433,6 +434,7 @@ export function AppleActivityCard({
   badge = "Career Goals",
   activities = SAMPLE_ACTIVITIES,
   className,
+  onEditGoals,
 }: {
   title?: string;
   subtitle?: string;
@@ -442,6 +444,7 @@ export function AppleActivityCard({
   /** Rings, outermost first. Defaults to sample data. */
   activities?: ActivityData[];
   className?: string;
+  onEditGoals?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const Heading = motion[titleAs];
@@ -469,7 +472,7 @@ export function AppleActivityCard({
       <MotionConfig reducedMotion="user">
         <div className="flex flex-col gap-6">
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-black/[0.06]">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-black/[0.06]">
             <div>
               <Heading
                 animate={
@@ -488,11 +491,32 @@ export function AppleActivityCard({
               )}
             </div>
 
-            {/* Apple Activity Pill Badge */}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/[0.04] text-[#1d1d1f] self-start sm:self-auto border border-black/[0.04]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#A3F900]" />
-              {badge}
-            </span>
+            {/* Apple Activity Pill Badge & Edit Action */}
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={onEditGoals}
+                disabled={!onEditGoals}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-black/[0.04] text-[#1d1d1f] border border-black/[0.04] transition-all",
+                  onEditGoals ? "hover:bg-black/[0.08] cursor-pointer" : "cursor-default"
+                )}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[#A3F900]" />
+                <span>{badge}</span>
+              </button>
+              {onEditGoals && (
+                <button
+                  type="button"
+                  onClick={onEditGoals}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium text-[#0071e3] bg-[#0071e3]/[0.08] hover:bg-[#0071e3]/[0.15] transition-colors"
+                  title="Configure your career ring targets"
+                >
+                  <SlidersHorizontal className="w-3 h-3" />
+                  <span>Set Targets</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Interactive Rings + Legend */}

@@ -247,7 +247,7 @@ export default function CareerResume() {
               : 'text-black/50 hover:text-black/80'
           }`}
         >
-          Resume Improvement Assistant ✨
+          Resume Improvement Assistant
         </button>
       </div>
 

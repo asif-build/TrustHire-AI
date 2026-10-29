@@ -82,27 +82,22 @@ export default function RoadmapDashboardPage() {
       <TrustHireNavbar />
 
       {/* Header */}
-      <section className="bg-white border-b border-black/5 py-10 sm:py-12 px-4 sm:px-6 lg:px-8">
+      <section className="bg-white border-b border-black/5 py-8 sm:py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1440px] mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F4F4F0] border border-black/5 text-xs font-mono text-gray-700 mb-3">
-              <Sparkles size={13} className="text-[#F0442D]" />
-              <span>Individualised Career Roadmap Engine</span>
-            </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-gray-950">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-950">
               My Career Roadmaps
             </h1>
-            <p className="mt-2 text-sm sm:text-base text-gray-600 max-w-2xl leading-relaxed">
-              Personalized, 6-phase preparation roadmaps calibrated against real employer expectations.
-              Compare your evidenced skills against live vacancy requirements and follow verifiable tasks to become a competitive candidate.
+            <p className="mt-1.5 text-xs sm:text-sm text-gray-600 max-w-2xl leading-relaxed">
+              Track milestones, bridge skill gaps, and prepare for target roles.
             </p>
           </div>
 
           <button
             onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-[#F0442D] hover:bg-[#d63823] text-white text-xs font-bold uppercase tracking-wider transition-colors shadow-sm self-start sm:self-center"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#121613] hover:bg-black text-white text-xs font-semibold transition-colors shadow-2xs self-start sm:self-center"
           >
-            <Plus size={16} />
+            <Plus size={15} />
             <span>New Roadmap</span>
           </button>
         </div>
@@ -183,15 +178,15 @@ export default function RoadmapDashboardPage() {
                   </div>
 
                   {/* Progress Bar */}
-                  <div className="mt-3 w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                  <div className="mt-3 w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                     <div
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                      className="bg-[#121613] h-full rounded-full transition-all duration-500"
                       style={{ width: `${r.progress_percentage}%` }}
                     />
                   </div>
 
                   {/* Readiness Summary */}
-                  <p className="mt-4 text-xs text-gray-600 line-clamp-3 leading-relaxed">
+                  <p className="mt-4 text-xs text-gray-600 line-clamp-2 leading-relaxed">
                     {r.readiness_summary}
                   </p>
                 </div>
@@ -203,7 +198,7 @@ export default function RoadmapDashboardPage() {
 
                   <Link
                     to={`/career-roadmap/${r.id}`}
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-950 group-hover:text-[#F0442D] transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-950 group-hover:text-black transition-colors"
                   >
                     <span>Open Roadmap</span>
                     <ArrowRight size={14} />
@@ -225,10 +220,10 @@ export default function RoadmapDashboardPage() {
 
           <div className="relative z-10 bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl">
             <h2 className="text-xl font-bold text-gray-950">
-              Generate Individualised Roadmap
+              Create Career Roadmap
             </h2>
             <p className="mt-1 text-xs text-gray-600 leading-relaxed">
-              TrustHire analyzes your profile evidence against verified company requirements to construct your tailored 6-phase roadmap.
+              Target a role and company to generate a structured preparation roadmap.
             </p>
 
             <form onSubmit={handleCreateRoadmap} className="mt-6 space-y-4">
@@ -300,9 +295,9 @@ export default function RoadmapDashboardPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2.5 rounded-full bg-[#F0442D] hover:bg-[#d63823] text-white text-xs font-bold uppercase tracking-wider transition-colors disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-full bg-[#121613] hover:bg-black text-white text-xs font-semibold transition-colors disabled:opacity-50"
                 >
-                  {submitting ? 'Generating Plan...' : 'Generate Roadmap'}
+                  {submitting ? 'Generating...' : 'Create Roadmap'}
                 </button>
               </div>
             </form>

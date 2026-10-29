@@ -14,10 +14,25 @@ class CareerProfileSerializer(serializers.ModelSerializer):
     user_email = serializers.EmailField(source='user.email', read_only=True)
     full_name = serializers.CharField(source='user.full_name', read_only=True)
 
+    ALLOWED_AVATARS = [f'avatar-0{i}' for i in range(1, 10)]
+
+    def validate_avatar_id(self, value):
+        if value and value not in self.ALLOWED_AVATARS:
+            raise serializers.ValidationError(
+                f"Invalid avatar ID '{value}'. Allowed avatars: {', '.join(self.ALLOWED_AVATARS)}"
+            )
+        return value
+
+    def validate_avatar_type(self, value):
+        if value and value not in ('illustrated', 'uploaded'):
+            raise serializers.ValidationError("avatar_type must be 'illustrated' or 'uploaded'.")
+        return value
+
     class Meta:
         model = CareerProfile
         fields = [
             'id', 'user_email', 'full_name', 'headline', 'summary',
+            'avatar_type', 'avatar_id', 'custom_avatar_url',
             'education', 'work_experience', 'projects', 'skills',
             'certifications', 'languages', 'career_interests',
             'preferred_job_titles', 'preferred_locations',

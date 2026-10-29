@@ -25,3 +25,6 @@ frontend/.env.local
 scratch/
 backend/scratch/
 .DS_Store
+
+backend/media/
+media/

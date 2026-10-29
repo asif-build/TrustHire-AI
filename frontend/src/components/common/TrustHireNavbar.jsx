@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import TrustHireLogo from '../ui/TrustHireLogo';
-import { ArrowRight, Menu, X, User } from 'lucide-react';
+import { ArrowRight, Menu, X, LogOut } from 'lucide-react';
+import UserAvatar from './UserAvatar';
 
 export default function TrustHireNavbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const mainLinks = [
@@ -38,45 +41,68 @@ export default function TrustHireNavbar() {
             />
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <div className="hidden lg:flex items-center gap-1 xl:gap-2">
-            {mainLinks.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  `px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors ${
+          {/* Desktop Navigation Links with KokonutUI Matched Spring Pill */}
+          <div className="hidden lg:flex items-center gap-1 p-1 rounded-full bg-[#F0F0EE] border border-black/[0.04] relative">
+            {mainLinks.map((item) => {
+              const isActive =
+                location.pathname === item.path ||
+                (item.path !== '/' && location.pathname.startsWith(item.path));
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={`relative px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors duration-150 select-none cursor-pointer ${
                     isActive
-                      ? 'bg-black text-white'
-                      : 'text-gray-700 hover:text-black hover:bg-gray-100/80'
-                  }`
-                }
-              >
-                {item.label}
-              </NavLink>
-            ))}
+                      ? 'text-white font-semibold'
+                      : 'text-[#515154] hover:text-[#1d1d1f] hover:bg-black/[0.04]'
+                  }`}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="global-navbar-active-pill"
+                      className="absolute inset-0 bg-[#121613] rounded-full shadow-2xs pointer-events-none"
+                      transition={{
+                        type: 'spring',
+                        stiffness: 420,
+                        damping: 38,
+                        mass: 0.85,
+                      }}
+                    />
+                  )}
+                  <span className="relative z-10 whitespace-nowrap">{item.label}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
         {/* RIGHT: User Controls & Theme */}
-        <div className="hidden sm:flex items-center gap-2 sm:gap-3">
+        <div className="hidden sm:flex items-center gap-3 shrink-0">
           {user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 shrink-0">
+              {/* Profile Picture Only (Apple circular avatar button) */}
               <Link
                 to="/career/profile"
-                className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gray-100 hover:bg-gray-200 text-xs font-mono text-gray-800 transition-colors"
+                className="relative rounded-full ring-2 ring-black/[0.1] hover:ring-black/30 active:scale-95 transition-all focus:outline-none shrink-0 w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center overflow-hidden shadow-xs cursor-pointer"
+                title="Your Profile"
+                aria-label="Open your career profile"
               >
-                <User size={13} className="text-gray-600" />
-                <span className="max-w-[160px] truncate">{user.email}</span>
+                <UserAvatar size="md" className="w-10 h-10 min-w-[40px] min-h-[40px] border-0" />
               </Link>
+
+              {/* Sign Out Button (Apple UI/UX Showcase Style) */}
               <button
+                type="button"
                 onClick={() => {
                   logout();
                   navigate('/');
                 }}
-                className="text-xs font-mono text-rose-600 hover:underline px-2 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#f5f5f7] hover:bg-[#e8e8ed] active:scale-[0.97] text-[#1d1d1f] hover:text-black text-xs font-medium border border-black/[0.08] shadow-2xs transition-all cursor-pointer shrink-0"
+                title="Sign out of your account"
+                aria-label="Sign Out"
               >
-                Sign Out
+                <LogOut className="w-4 h-4 text-[#6e6e73]" />
+                <span>Sign Out</span>
               </button>
             </div>
           ) : (
@@ -130,26 +156,28 @@ export default function TrustHireNavbar() {
           ))}
           <div className="pt-3 border-t border-gray-100 flex flex-col gap-2">
             {user ? (
-              <>
+              <div className="flex items-center justify-between p-2 rounded-2xl bg-[#f5f5f7] border border-black/[0.04]">
                 <Link
                   to="/career/profile"
                   onClick={() => setMobileOpen(false)}
-                  className="w-full py-2.5 px-3 flex items-center justify-center gap-2 bg-gray-100 text-gray-800 rounded-xl text-xs font-mono"
+                  className="flex items-center gap-2.5 p-1 min-w-0"
                 >
-                  <User size={13} className="text-gray-600" />
-                  <span className="truncate">{user.email}</span>
+                  <UserAvatar size="md" className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-full border border-black/10 shadow-2xs shrink-0" />
+                  <span className="text-xs font-semibold text-[#1d1d1f]">My Profile</span>
                 </Link>
                 <button
+                  type="button"
                   onClick={() => {
                     logout();
                     setMobileOpen(false);
                     navigate('/');
                   }}
-                  className="w-full py-2 text-center text-xs font-mono text-rose-600"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white hover:bg-gray-50 active:scale-95 text-[#1d1d1f] text-xs font-medium border border-black/[0.06] shadow-2xs transition-all cursor-pointer"
                 >
-                  Sign Out
+                  <LogOut className="w-3.5 h-3.5 text-[#6e6e73]" />
+                  <span>Sign Out</span>
                 </button>
-              </>
+              </div>
             ) : (
               <div className="flex items-center gap-2">
                 <Link
